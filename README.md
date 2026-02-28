@@ -1,202 +1,206 @@
 # GitPal
 
-Git on autopilot. A CLI tool that watches your projects, commits changes with AI-written messages, pushes to GitHub, and generates a daily newspaper-style digest of everything that happened.
+Git on autopilot. A CLI tool that watches your projects, auto-commits with AI-generated messages, pushes to GitHub, and generates a daily newspaper-style digest.
 
-Built for solo developers who want version control without thinking about it.
+Built for solo developers who want effortless version control and project insights.
 
-## What it does
+---
 
-- **Watches your project directories** for file changes and auto-commits after idle periods
-- **Generates commit messages** using OpenAI (gpt-4.1-mini) or Ollama — no more "update files" messages
-- **Pushes to GitHub** automatically, with offline queue support for when you're disconnected
-- **Takes screenshots** of running web projects via headless Chrome
-- **Publishes The GitPal Gazette** — a daily AI-written newspaper digest of your work, viewable in a web dashboard at `localhost:4242`
-- **Regenerates READMEs** using AI after every push
-- **Monitors system health** — disk, memory, Docker containers, AI provider status
-- **Runs as systemd services** — survives reboots, auto-restarts dead watchers
+## Description
 
-## Quick start
+GitPal automates Git workflows by watching your project directories for changes, generating meaningful commit messages using AI (OpenAI or Ollama), and pushing updates to GitHub automatically. It also generates a daily AI-written "GitPal Gazette" digest summarizing your work with screenshots and system health info, accessible via a web dashboard. This tool solves the problem of tedious manual commits and provides continuous project monitoring and reporting.
 
-```bash
-# Install Bun if you don't have it
-curl -fsSL https://bun.sh/install | bash
+---
 
-# Clone and install
-git clone https://github.com/bb82dabn/gitpal.git
-cd gitpal
-bun install
-bun run install-bin
+## Features
 
-# Set up
-gp setup
-```
+- **CLI with 21 commands** including:
+  - `gp push`: Stage, commit with AI-generated message, and push to GitHub.
+  - `gp snapshot`: Commit locally without pushing.
+  - `gp undo`: Restore previous states safely.
+  - `gp status`: Show git status of all tracked projects.
+  - `gp watch`: Start/stop file watchers per project.
+  - `gp digest`: Generate the daily GitPal Gazette.
+  - `gp doctor`: Run full system health checks with optional auto-fix.
+  - `gp readme`: Regenerate README.md files using AI.
+  - `gp context`: Generate project cheat sheets (`.gp/context.md`).
+  - `gp new <name>`: Scaffold new projects.
+  - `gp stash`: Stash and restore uncommitted changes.
+  - `gp open`: Open project repository on GitHub.
+  - `gp clean`: Remove build artifacts and caches.
+  - `gp serve`: Start the web dashboard.
 
-Setup walks you through connecting GitHub, choosing an AI provider, and configuring which directories to watch.
+- **File watchers**:
+  - `gp-watcher`: Per-project daemon watching for changes and auto-committing.
+  - `gp-projects-watcher`: Watches root project directories for new projects.
 
-## Commands
+- **AI integrations**:
+  - Generates concise, conventional commit messages from git diffs.
+  - Regenerates README files with AI assistance.
+  - Writes daily newspaper-style digests summarizing commits and project status.
 
-| Command | What it does |
-|---|---|
-| `gp push` | Stage, commit with AI message, push to GitHub |
-| `gp snapshot` | Commit locally without pushing |
-| `gp undo` | Safely restore a previous state (always snapshots first) |
-| `gp status` | Show all projects and their git status |
-| `gp watch` | Start/stop file watchers for a project |
-| `gp digest` | Generate The GitPal Gazette |
-| `gp doctor` | Full system health check with auto-fix |
-| `gp readme` | Regenerate README with AI |
-| `gp context` | Generate `.gp/context.md` project cheat sheet |
-| `gp new <name>` | Scaffold a new project |
-| `gp diff` | Show uncommitted changes |
-| `gp log` | Show recent commit history |
-| `gp blame <file>` | Git blame with formatting |
-| `gp stash` | Stash/unstash uncommitted changes |
-| `gp open` | Open the project on GitHub |
-| `gp clean` | Remove build artifacts and caches |
-| `gp serve` | Start the web dashboard |
+- **Web dashboard** (`gp-server`):
+  - Runs on `localhost:4242`.
+  - Displays system health (disk, memory, Docker containers, AI provider status).
+  - Shows tracked projects with watcher status and recent commits.
+  - Presents the GitPal Gazette digest with articles and screenshots.
 
-## The GitPal Gazette
+- **Automatic deployment support**:
+  - Detects `deploy.sh` or `docker-compose.yml` in projects and runs deploy commands after pushes.
 
-A daily newspaper-style digest rendered in the web dashboard. Each edition includes:
+- **Shell integration**:
+  - Adds a shell hook to automatically detect when you `cd` into git projects and start watchers.
 
-- AI-written narrative articles about what changed in each project
-- Live screenshots of running web applications
-- Sidebar with uncommitted work and infrastructure health
-- Classic broadsheet layout with serif typography
+- **Offline queueing**:
+  - Supports offline commit queues and pushes when network is restored.
 
-Run `gp digest` to generate an edition, then visit `localhost:4242` and click the Digest tab.
-
-## Web Dashboard
-
-GitPal includes a web dashboard at `localhost:4242` with:
-
-- **Doctor panel** — live system health (disk, memory, Docker, AI provider, push queue)
-- **Projects panel** — all tracked projects with watcher status and last commit
-- **Commit feed** — recent commits across all projects
-- **Gazette tab** — The GitPal Gazette daily digest
-
-Start it with `gp serve` or let the systemd service handle it.
-
-## Configuration
-
-Stored in `~/.gitpal/config.json`:
-
-```jsonc
-{
-  "watch_patterns": ["/home/you/projects/*"],
-  "idle_seconds": 120,          // seconds of inactivity before auto-commit
-  "ai_provider": "openai",     // "openai" or "ollama"
-  "openai_api_key": "sk-...",
-  "openai_model": "gpt-4.1-mini",
-  "auto_push": true
-}
-```
-
-## Architecture
-
-```
-~/.local/bin/
-  gp                  CLI (21 commands)
-  gp-watcher          per-project file watcher daemon
-  gp-projects-watcher watches ~/projects/ for new folders
-  gp-server           web dashboard on port 4242
-
-~/.gitpal/
-  config.json          configuration
-  sessions/            PID files for running daemons
-  screenshots/         project screenshots for the Gazette
-  log/
-    gazette.json       latest Gazette data
-    digest.md          plaintext digest
-    gitpal.log         watcher activity log
-```
-
-Each part of the system works together to provide automated version control and project monitoring.
+---
 
 ## Tech Stack
 
-| Technology | Role |
-|-----------|------|
-| **Bun** | Runtime environment and build tool |
-| **TypeScript** | Primary programming language |
-| **Chokidar** | File system watcher for change detection |
-| **Inquirer** | Interactive prompts for user input |
-| **Chalk** | Terminal styling and color output |
-| **SQLite** | Local database for storing configuration |
-| **Redis** | In-memory data store for caching |
-| **PostgreSQL** | Relational database for persistent storage |
-| **React** | Frontend framework for the web dashboard |
-| **Tailwind CSS** | Utility-first CSS framework for styling |
-| **Docker** | Containerization for deployment |
+| Technology           | Role                          |
+|---------------------|-------------------------------|
+| Bun                 | JavaScript runtime and bundler|
+| TypeScript          | Language                      |
+| Git                 | Version control integration   |
+| OpenAI API          | AI commit message generation  |
+| Ollama              | Alternative AI provider       |
+| Docker              | Deployment and container monitoring |
+| GitHub CLI (`gh`)   | GitHub repo management        |
+| Chokidar            | File watching                 |
+| Chalk               | CLI output styling            |
+| Execa               | Running shell commands        |
+| WebSocket (Bun)     | Web dashboard real-time updates |
+| HTML/CSS/JS         | Web dashboard UI              |
+
+---
+
+## Architecture
+
+GitPal consists of several components installed as binaries and daemons:
+
+- **CLI (`gp`)**: Main command-line interface with 21 commands located in `src/commands/`.
+- **Watcher daemons**:
+  - `gp-watcher`: Watches a single project directory for changes, auto-commits after idle timeout.
+  - `gp-projects-watcher`: Watches configured root directories (e.g., `~/projects`) for new projects.
+- **Web server (`gp-server`)**: Serves the web dashboard on port 4242, providing project summaries, health checks, and the GitPal Gazette.
+- **Configuration and state**: Stored in `~/.gitpal/` including config, sessions (PID files), logs, screenshots, and digest data.
+- **Shell integration**: Adds a hook to your shell to detect directory changes and start watchers automatically.
+- **AI integration**: Abstracted in `src/lib/ai.ts` supporting OpenAI and Ollama for commit messages and README generation.
+- **Git integration**: `src/lib/git.ts` wraps git commands for status, commit, push, diff, log, stash, and blame.
+- **Deployment**: `src/lib/deploy.ts` detects Docker or custom deploy scripts and runs them after pushes.
+
+---
 
 ## Prerequisites
 
-- **Bun** 1.0.0+ (https://bun.sh/)
-- **Node.js** 18+ (for Docker and other dependencies)
-- **npm** 8+ (for package management)
-- **git** (for version control)
-- **docker** (for containerized services)
-- **docker-compose** (for orchestration)
-- **OpenAI API key** (for AI commit messages)
-- **Ollama** (for local AI model running)
+- **Bun** runtime (latest recommended; install via https://bun.sh)
+- **Git** installed and accessible in PATH
+- **GitHub CLI (`gh`)** installed and authenticated for GitHub integration
+- **Docker** (optional, for deployment and monitoring)
+- **Google Chrome Stable** (`/usr/bin/google-chrome-stable`) for project screenshots (optional)
+- **AI provider**:
+  - OpenAI API key (set in config) or
+  - Ollama running locally (`ollama serve`)
+
+---
 
 ## Installation & Setup
 
 ```bash
-# Install Bun if you don't have it
+# Install Bun if not installed
 curl -fsSL https://bun.sh/install | bash
 
-# Clone and install
+# Clone the repository
 git clone https://github.com/bb82dabn/gitpal.git
 cd gitpal
+
+# Install dependencies
 bun install
+
+# Build binaries and install to ~/.local/bin
 bun run install-bin
+
+# Add shell integration (adds hook to ~/.bashrc)
+# Then reload shell config
+source ~/.bashrc
+
+# Run initial setup wizard
+gp setup
 ```
 
-This installs the CLI tools, sets up the configuration directory, and configures shell integration.
+The `gp setup` command walks you through:
+
+- Connecting your GitHub account
+- Choosing AI provider and configuring API keys or Ollama URL
+- Setting directories to watch for projects
+
+---
 
 ## Running
 
 ### Development
+
+Run the CLI or daemons directly with Bun:
+
 ```bash
-bun run start
+bun run src/index.ts <command> [args]
+bun run src/watcher-daemon.ts <project-dir>
+bun run src/projects-watcher-daemon.ts
+bun run src/server.ts
 ```
 
 ### Production
+
+Use installed binaries from `~/.local/bin`:
+
 ```bash
-bun build
+gp <command> [args]
+gp-watcher <project-dir>
+gp-projects-watcher
+gp-server
 ```
+
+---
 
 ## Docker
 
-```bash
-# Start services
-docker-compose up -d
+No `docker-compose.yml` or Docker setup provided for GitPal itself.
 
-# Stop services
-docker-compose down
-```
+However, GitPal supports deploying your own projects with Docker:
+
+- Detects `docker-compose.yml` or `deploy.sh` in projects.
+- Runs `docker compose build` and `docker compose up -d` automatically after pushes.
+
+---
 
 ## API Overview
 
-| Route Group | Description |
-|------------|-------------|
-| `/` | Web dashboard UI |
-| `/api/projects` | Project management endpoints |
-| `/api/health` | System health checks |
-| `/api/digest` | Gazette article endpoints |
-| `/api/commit` | Commit history and diffs |
-| `/api/screenshot` | Project screenshot endpoints |
+GitPal does not expose a public REST API but provides a web dashboard server (`gp-server`) with these route groups:
+
+- `/api/projects` — lists tracked projects with status and commits
+- `/api/doctor` — system health checks (disk, memory, Docker, AI provider)
+- `/api/gazette` — daily digest data including articles and screenshots
+- `/api/actions` — accept POST requests to trigger actions like push, sync, undo on projects
+
+The dashboard UI is served from `src/public/index.html` and bundled frontend assets.
+
+---
 
 ## Environment Variables
 
-| Variable | Description | Required |
-|---------|-------------|----------|
-| `OPENAI_API_KEY` | OpenAI API key for AI commit messages | ✅ |
-| `OLLAMA_URL` | URL of running Ollama server | ✅ |
-| `GITPAL_CONFIG_DIR` | Custom configuration directory | ❌ |
-| `GITPAL_LOG_DIR` | Custom log directory | ❌ |
-| `GITPAL_SCREENSHOTS_DIR` | Custom screenshot directory | ❌ |
-| `GITPAL_IDLE_SECONDS` | Auto-commit idle time in seconds | ❌ |
-| `GITPAL_AUTO_PUSH` | Enable automatic GitHub pushes | ❌ |
-| `GITPAL_WATCH_PATTERNS` | Additional directories to watch | ❌ |
+GitPal primarily uses a JSON config file (`~/.gitpal/config.json`) but also respects environment variables for AI keys.
+
+| Variable          | Description                              | Required          |
+|-------------------|------------------------------------------|-------------------|
+| `OPENAI_API_KEY`  | OpenAI API key for commit message generation and README regeneration | If using OpenAI AI provider |
+| `OLLAMA_URL`      | URL of local Ollama server (default: `http://localhost:11434`) | If using Ollama AI provider |
+| `GITHUB_USERNAME` | GitHub username for repo operations (stored in config) | Recommended       |
+
+Note: Bun automatically loads `.env` files if present.
+
+---
+
+# Summary
+
+GitPal is a comprehensive CLI and daemon-based tool that automates Git workflows with AI-powered commit messages, automatic pushes, project watching, and a rich web dashboard featuring a daily AI-written digest. It integrates tightly with GitHub, Docker, and AI providers (OpenAI or Ollama) to provide a seamless, hands-off version control experience for solo developers.
