@@ -1,0 +1,182 @@
+/**
+ * Project context file management.
+ * Generates and maintains .gp/context.md in each project —
+ * a "cheat sheet" opencode reads at the start of every session.
+ */
+
+import { existsSync, mkdirSync, writeFileSync, readFileSync, statSync } from "node:fs";
+import { join, basename } from "node:path";
+import { loadConfig } from "./config.ts";
+
+const CONTEXT_DIR = ".gp";
+const CONTEXT_FILE = "context.md";
+const MAX_AGE_MS = 24 * 60 * 60 * 1000; // regenerate if older than 24h
+
+export function getContextPath(dir: string): string {
+  return join(dir, CONTEXT_DIR, CONTEXT_FILE);
+}
+
+export function isContextStale(dir: string): boolean {
+  const path = getContextPath(dir);
+  if (!existsSync(path)) return true;
+  try {
+    const age = Date.now() - statSync(path).mtimeMs;
+    return age > MAX_AGE_MS;
+  } catch { return true; }
+}
+
+function detectStack(dir: string): string[] {
+  const stack: string[] = [];
+  const pkgPath = join(dir, "package.json");
+  if (existsSync(pkgPath)) {
+    try {
+      const pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as Record<string, unknown>;
+      const deps = { ...pkg["dependencies"] as Record<string,string> ?? {}, ...pkg["devDependencies"] as Record<string,string> ?? {} };
+      if (deps["next"]) stack.push("Next.js");
+      else if (deps["react"]) stack.push("React");
+      if (deps["express"]) stack.push("Express");
+      if (deps["prisma"] || deps["@prisma/client"]) stack.push("Prisma");
+      if (deps["tailwindcss"]) stack.push("Tailwind CSS");
+      if (deps["typescript"] || deps["@types/node"]) stack.push("TypeScript");
+      if (deps["stripe"]) stack.push("Stripe");
+      if (deps["socket.io"]) stack.push("WebSockets");
+    } catch { /* ok */ }
+  }
+  if (existsSync(join(dir, "docker-compose.yml"))) stack.push("Docker");
+  if (existsSync(join(dir, "requirements.txt"))) stack.push("Python");
+  if (existsSync(join(dir, "Cargo.toml"))) stack.push("Rust");
+  return stack;
+}
+
+function findTodos(dir: string): string[] {
+  const todos: string[] = [];
+  const extensions = [".ts", ".tsx", ".js", ".jsx", ".py", ".go"];
+  const skip = new Set(["node_modules", ".git", "dist", "build", ".cache", ".next"]);
+
+  function walk(current: string, depth: number): void {
+    if (depth > 4 || todos.length >= 20) return;
+    let entries: string[] = [];
+    try { entries = Bun.spawnSync(["ls", current]).stdout.toString().split("\n").filter(Boolean); } catch { return; }
+    for (const entry of entries) {
+      if (skip.has(entry)) continue;
+      const full = join(current, entry);
+      try {
+        const stat = statSync(full);
+        if (stat.isDirectory()) { walk(full, depth + 1); continue; }
+        if (!extensions.some(e => entry.endsWith(e))) continue;
+        const content = readFileSync(full, "utf8");
+        const lines = content.split("\n");
+        lines.forEach((line, i) => {
+          const match = line.match(/\/\/\s*TODO[:\s]+(.+)/i) ?? line.match(/#\s*TODO[:\s]+(.+)/i);
+          if (match?.[1] && todos.length < 20) {
+            const rel = full.replace(dir + "/", "");
+            todos.push(`- ${match[1].trim()} *(${rel}:${i + 1})*`);
+          }
+        });
+      } catch { /* skip */ }
+    }
+  }
+  walk(dir, 0);
+  return todos;
+}
+
+async function getRecentCommits(dir: string): Promise<string[]> {
+  try {
+    const r = await Bun.$`git -C ${dir} log --oneline -8`.quiet().nothrow();
+    if (r.exitCode !== 0) return [];
+    return r.stdout.toString().trim().split("\n").filter(Boolean).map(l => `- ${l}`);
+  } catch { return []; }
+}
+
+async function getUncommittedSummary(dir: string): Promise<string> {
+  try {
+    const r = await Bun.$`git -C ${dir} status --porcelain`.quiet().nothrow();
+    const lines = r.stdout.toString().trim().split("\n").filter(Boolean);
+    if (lines.length === 0) return "Clean — nothing uncommitted.";
+    return `${lines.length} file(s) modified: ${lines.slice(0, 5).map(l => l.slice(3)).join(", ")}${lines.length > 5 ? "…" : ""}`;
+  } catch { return "Unknown"; }
+}
+
+function getDockerServices(dir: string): string[] {
+  const composePath = join(dir, "docker-compose.yml");
+  if (!existsSync(composePath)) return [];
+  try {
+    const content = readFileSync(composePath, "utf8");
+    // Only grab service names from within the services: block
+    const servicesBlock = content.match(/^services:\s*\n((?:(?:  [^\n]+|)\n)*)/m)?.[1] ?? "";
+    const matches = servicesBlock.matchAll(/^  ([a-zA-Z][\w-]+):\s*$/gm);
+    return Array.from(matches).map(m => m[1]!);
+  } catch { return []; }
+}
+
+export async function generateContext(dir: string): Promise<string> {
+  const name = basename(dir);
+  const stack = detectStack(dir);
+  const todos = findTodos(dir);
+  const commits = await getRecentCommits(dir);
+  const uncommitted = await getUncommittedSummary(dir);
+  const services = getDockerServices(dir);
+
+  const now = new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+
+  const lines: string[] = [
+    `# ${name} — Project Context`,
+    `*Auto-generated by GitPal on ${now}. Do not edit manually — it will be overwritten.*`,
+    ``,
+    `## Stack`,
+    stack.length > 0 ? stack.map(s => `- ${s}`).join("\n") : "- Unknown",
+    ``,
+  ];
+
+  if (services.length > 0) {
+    lines.push(`## Docker Services`);
+    lines.push(services.map(s => `- ${s}`).join("\n"));
+    lines.push(`- Start: \`docker compose up -d\``);
+    lines.push(`- Stop: \`docker compose down\``);
+    lines.push(``);
+  }
+
+  lines.push(`## Recent Commits`);
+  lines.push(commits.length > 0 ? commits.join("\n") : "- No commits yet");
+  lines.push(``);
+
+  lines.push(`## Current State`);
+  lines.push(uncommitted);
+  lines.push(``);
+
+  if (todos.length > 0) {
+    lines.push(`## TODOs Found in Code`);
+    lines.push(todos.join("\n"));
+    lines.push(``);
+  }
+
+  lines.push(`## How to Work on This Project`);
+  lines.push(`- Snapshot before risky changes: \`gp snapshot --quiet\``);
+  lines.push(`- Push when done: \`gp push --yes\``);
+  lines.push(`- View history: \`gp log\``);
+
+  return lines.join("\n");
+}
+
+export async function writeContext(dir: string): Promise<void> {
+  const gpDir = join(dir, CONTEXT_DIR);
+  if (!existsSync(gpDir)) mkdirSync(gpDir, { recursive: true });
+
+  // Add .gp to .gitignore if not already there
+  const gitignorePath = join(dir, ".gitignore");
+  if (existsSync(gitignorePath)) {
+    const gi = readFileSync(gitignorePath, "utf8");
+    if (!gi.includes(".gp")) {
+      writeFileSync(gitignorePath, gi.trimEnd() + "\n\n# GitPal\n.gp/\n");
+    }
+  }
+
+  const content = await generateContext(dir);
+  writeFileSync(getContextPath(dir), content);
+}
+
+export async function refreshContext(dir: string, force = false): Promise<boolean> {
+  if (!force && !isContextStale(dir)) return false;
+  await writeContext(dir);
+  return true;
+}
