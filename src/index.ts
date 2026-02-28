@@ -19,7 +19,7 @@ import { runSnapshot, runLog } from "./commands/snapshot-log.ts";
 import { runContext } from "./commands/context.ts";
 import { runNew } from "./commands/new.ts";
 import { runDoctor, type DoctorOptions } from "./commands/doctor.ts";
-import { runDigest, installDigestCron } from "./commands/digest.ts";
+import { runDigest, installDigestCron, runDailyReadmeRefresh } from "./commands/digest.ts";
 import { runStatusHint } from "./commands/status-hint.ts";
 import { runSync } from "./commands/sync.ts";
 import { runBlame } from "./commands/blame.ts";
@@ -129,7 +129,12 @@ async function main(): Promise<void> {
       if (args.includes("--install-cron")) {
         await installDigestCron();
       } else {
-        await runDigest(args.includes("--cron") || args.includes("--quiet"));
+        const isCron = args.includes("--cron") || args.includes("--quiet");
+        await runDigest(isCron);
+        if (isCron) {
+          // Also refresh all READMEs as part of daily cron run
+          await runDailyReadmeRefresh(true);
+        }
       }
       break;
 

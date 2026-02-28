@@ -4,13 +4,14 @@
  * Output goes to ~/.gitpal/log/digest.md and is printed to stdout.
  */
 
-import { readdirSync, statSync, writeFileSync, mkdirSync } from "node:fs";
+import { readdirSync, statSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { loadConfig } from "../lib/config.ts";
 import { isGitRepo, gitStatus } from "../lib/git.ts";
 import { gp, banner } from "../lib/display.ts";
 import chalk from "chalk";
+import { runReadme } from "./readme.ts";
 
 const HOME = homedir();
 const DIGEST_PATH = join(HOME, ".gitpal", "log", "digest.md");
@@ -183,6 +184,16 @@ export async function runDigest(quiet = false): Promise<void> {
     gp.blank();
     console.log(chalk.dim(`  Full digest saved to: ${DIGEST_PATH}`));
     gp.blank();
+  }
+}
+
+/** Regenerate README for every project — called by daily cron */
+export async function runDailyReadmeRefresh(quiet = false): Promise<void> {
+  const dirs = await getProjectDirs();
+  for (const dir of dirs) {
+    const name = dir.split("/").pop() ?? dir;
+    if (!quiet) gp.info(`Refreshing README for ${name}...`);
+    await runReadme(dir).catch(() => { /* non-fatal */ });
   }
 }
 

@@ -18,11 +18,14 @@ import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync, appendF
 import { isGitRepo, gitStatus, gitAdd, gitCommit, gitDiff, gitPush, hasRemote } from "./lib/git.ts";
 import { generateCommitMessage } from "./lib/ai.ts";
 import { refreshContext } from "./lib/context.ts";
+import { writeReadme, generateRepoMeta, applyRepoMeta } from "./lib/readme.ts";
 import { loadConfig } from "./lib/config.ts";
 
 const dir = resolve(process.argv[2] ?? process.cwd());
 let config = await loadConfig(); // module-level so doCommit can access it
 const HOME = homedir();
+let commitCount = 0; // tracks watcher commits for periodic README refresh
+const README_REFRESH_EVERY = 10;
 const LOG_FILE = join(HOME, ".gitpal", "log", "gitpal.log");
 const QUEUE_FILE = join(HOME, ".gitpal", "push-queue.json");
 
@@ -137,8 +140,18 @@ async function doCommit(reason: string): Promise<void> {
     appendFileSync(historyFile, `- ${ts} \u2014 ${message}\n`);
   } catch { /* non-fatal */ }
 
-  // Refresh context in background after every watcher commit
+  // Refresh context + periodic README regen in background
   refreshContext(dir, true).catch(() => { /* non-fatal */ });
+  commitCount++;
+  if (commitCount % README_REFRESH_EVERY === 0) {
+    log(`README refresh triggered (every ${README_REFRESH_EVERY} commits)`);
+    writeReadme(dir).then(async () => {
+      const config2 = await loadConfig();
+      const name = dir.split("/").pop() ?? "";
+      const meta = await generateRepoMeta(dir);
+      await applyRepoMeta(`${config2.github_username}/${name}`, meta);
+    }).catch(() => { /* non-fatal */ });
+  }
 
   // Auto-push if enabled and project has a remote
   if (config.auto_push && (await hasRemote(dir))) {
