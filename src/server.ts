@@ -261,7 +261,7 @@ async function handleRequest(req: Request): Promise<Response> {
     const shareLogo = join(HOME, ".local", "share", "gitpal", "logo.png");
     const srcLogo = join(HOME, "projects", "gitpal", "assets", "logo.png");
     const logoPath = existsSync(shareLogo) ? shareLogo : srcLogo;
-    if (existsSync(logoPath)) return new Response(Bun.file(logoPath), { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=86400" } });
+    if (existsSync(logoPath)) return new Response(Bun.file(logoPath), { headers: { "Content-Type": "image/png", "Cache-Control": "no-cache" } });
     return new Response("Not found", { status: 404 });
   }
 
