@@ -12,7 +12,7 @@ To run:
 bun run index.ts
 ```
 
-This project was created using `bun init` in bun v1.3.9. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+This project was created using `bun init` in bun v1.3.9. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
 
 ---
 
@@ -33,6 +33,11 @@ This project was created using `bun init` in bun v1.3.9. [Bun](https://bun.com) 
 - **Project health checks** for disk space, memory, and container status
 - **Customizable watch patterns** for directory monitoring
 - **Command-line interface** with over 20 Git-related commands
+- **Interactive shell hook** for detecting ungitted dirs and starting watchers
+- **Daily digest** of project changes and system health
+- **Stash management** for uncommitted changes
+- **System health checks** for disk, memory, Docker, and Ollama
+- **Project context files** for quick reference
 
 ---
 
@@ -67,6 +72,7 @@ This project was created using `bun init` in bun v1.3.9. [Bun](https://bun.com) 
 4. **Watchers** (`src/watcher-daemon.ts`, `projects-watcher-daemon.ts`): Background processes for real-time monitoring
 5. **Context Management** (`src/lib/context.ts`): Generates `.gp/context.md` cheat sheets
 6. **Deployment** (`src/lib/deploy.ts`): Docker-compose automation for deployments
+7. **Server** (`src/server.ts`): Web interface for project monitoring and management
 
 ---
 
@@ -111,7 +117,11 @@ gp <command>
 
 ## Docker
 
-No Dockerfile provided. Use `docker-compose.yml` if present for containerization.
+Use `docker-compose.yml` if present for containerization:
+
+```bash
+docker-compose up -d
+```
 
 ---
 
@@ -134,11 +144,10 @@ No Dockerfile provided. Use `docker-compose.yml` if present for containerization
 
 | Variable              | Description                                                                 | Required |
 |-----------------------|-----------------------------------------------------------------------------|----------|
-| `OLLAMA_MODEL`        | AI model to use for commit messages (default: `llama3.2`)                  | Optional |
-| `OLLAMA_URL`          | Ollama server URL (default: `http://localhost:11434`)                      | Optional |
-| `GITPAL_WATCH_PATTERNS` | Directories to monitor (comma-separated)                                   | Optional |
-| `GITPAL_IDLE_SECONDS` | Auto-commit idle threshold in seconds (default: 120)                      | Optional |
-| `GITPAL_AUTO_PUSH`    | Automatically push after auto-commits (default: `false`)                   | Optional |
-| `GITPAL_GITHUB_USERNAME` | GitHub username for repo creation (default: `bb82dabn`)                   | Optional |
-
-These variables are loaded from `~/.gitpal/config.json` and `.env` files.
+| `OLLAMA_MODEL`        | AI model for commit messages                                               | false    |
+| `OLLAMA_URL`          | URL for Ollama service                                                     | false    |
+| `GITHUB_USERNAME`     | GitHub username for repo creation                                         | false    |
+| `AUTO_PUSH`           | Enable auto-push after commits                                            | false    |
+| `WATCH_PATTERNS`      | Directories to monitor                                                    | false    |
+| `EXCLUDE_PATTERNS`    | Files/dirs to exclude from monitoring                                    | false    |
+| `IDLE_SECONDS`        | Seconds of inactivity before auto-commit                                 | false    |
