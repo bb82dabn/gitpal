@@ -162,12 +162,29 @@ async function captureScreenshot(projectName: string, port: string): Promise<str
   const outPath = join(SCREENSHOTS_DIR, `${projectName}.png`);
   const url = `http://localhost:${port}/`;
 
+  // Pre-check: is the port actually serving HTTP?
+  try {
+    const probe = await fetch(url, { signal: AbortSignal.timeout(5_000) });
+    if (!probe.ok) return null;
+    const ct = probe.headers.get("content-type") ?? "";
+    // Skip non-HTML responses (API-only services, raw JSON, etc.)
+    if (!ct.includes("html") && !ct.includes("text")) return null;
+  } catch { return null; }
+
   try {
     const proc = Bun.spawn([CHROME_BIN, "--headless", "--disable-gpu", "--no-sandbox", `--screenshot=${outPath}`, "--window-size=1280,800", url], { stdout: "ignore", stderr: "ignore" });
     const timer = setTimeout(() => proc.kill(), 15_000);
     await proc.exited;
     clearTimeout(timer);
-    if (existsSync(outPath)) return `${projectName}.png`;
+    if (existsSync(outPath)) {
+      // Skip tiny screenshots — likely error pages or blank screens
+      const size = statSync(outPath).size;
+      if (size < 50_000) {
+        try { Bun.spawnSync(["rm", "-f", outPath]); } catch {}
+        return null;
+      }
+      return `${projectName}.png`;
+    }
   } catch { /* timeout or crash */ }
 
   return null;
