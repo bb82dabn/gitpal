@@ -7,7 +7,7 @@ import { existsSync, readdirSync, statSync, readFileSync, unlinkSync } from "nod
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { loadConfig } from "../lib/config.ts";
-import { isOllamaRunning } from "../lib/ai.ts";
+import { isOllamaRunning, isAIAvailable } from "../lib/ai.ts";
 import { gitStatus, isGitRepo, hasRemote } from "../lib/git.ts";
 import { gp, banner } from "../lib/display.ts";
 import chalk from "chalk";
@@ -71,9 +71,11 @@ async function checkMemory(): Promise<boolean> {
 }
 
 async function checkOllama(): Promise<boolean> {
-  const running = await isOllamaRunning();
-  if (running) { pass("Ollama", "running — AI commit messages active"); return true; }
-  warn("Ollama", "not running — AI features disabled. Run: ollama serve");
+  const config = await loadConfig();
+  const provider = config.ai_provider === "openai" && config.openai_api_key ? "OpenAI" : "Ollama";
+  const available = await isAIAvailable();
+  if (available) { pass(provider, `connected — AI commit messages active (${config.ai_provider === "openai" ? config.openai_model : config.ollama_model})`); return true; }
+  warn(provider, provider === "OpenAI" ? "unreachable — check openai_api_key in ~/.gitpal/config.json" : "not running — AI features disabled. Run: ollama serve");
   return false;
 }
 

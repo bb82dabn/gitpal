@@ -7,6 +7,9 @@ export interface GitPalConfig {
   idle_seconds: number;
   ollama_model: string;
   ollama_url: string;
+  openai_api_key: string;
+  openai_model: string;
+  ai_provider: "openai" | "ollama";
   github_username: string;
   auto_push: boolean;
 }
@@ -21,6 +24,9 @@ const DEFAULTS: GitPalConfig = {
   idle_seconds: 120,
   ollama_model: "llama3.2",
   ollama_url: "http://localhost:11434",
+  openai_api_key: "",
+  openai_model: "gpt-4.1-mini",
+  ai_provider: "openai",
   github_username: "bb82dabn",
   auto_push: false,
 };

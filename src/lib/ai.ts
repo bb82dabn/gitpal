@@ -1,8 +1,8 @@
-import { loadConfig } from "./config.ts";
+import { loadConfig, type GitPalConfig } from "./config.ts";
 
 const MAX_DIFF_CHARS = 4000;
 
-const PROMPT_TEMPLATE = (diff: string) => `You are a git commit message writer. Given the following git diff, write a concise conventional commit message.
+const COMMIT_PROMPT = (diff: string) => `You are a git commit message writer. Given the following git diff, write a concise conventional commit message.
 
 Rules:
 - Format: type: description (max 72 chars total)
@@ -39,7 +39,6 @@ function statFallback(diff: string): string {
     return `chore: auto-save ${now.toTimeString().substring(0, 5)}`;
   }
 
-  // Prefix: guess intent from file names
   const fileList = [...files];
   const isNewFile = diff.includes("new file mode");
   const type = isNewFile ? "add" : "update";
@@ -54,7 +53,7 @@ function statFallback(diff: string): string {
     : `${type} ${fileCount} files`;
 }
 
-// Detect vague/generic messages Ollama sometimes returns
+// Detect vague/generic messages
 const VAGUE_PATTERNS = [
   /^chore: (auto-?save|updates?|misc|wip|changes?)$/i,
   /^(wip|misc|update|updates|auto-save|auto save)$/i,
@@ -71,7 +70,6 @@ function isVague(msg: string): boolean {
 function truncateDiff(diff: string): string {
   if (diff.length <= MAX_DIFF_CHARS) return diff;
 
-  // Build a structured summary: per-file line counts
   const fileSections = diff.split(/(?=^diff --git )/m);
   const summaryLines: string[] = [`[Large diff — ${diff.length} chars. File-by-file summary:]`];
 
@@ -89,45 +87,107 @@ function truncateDiff(diff: string): string {
   return summaryLines.join("\n");
 }
 
-// ── Main export ────────────────────────────────────────────────────────────
+// ── OpenAI chat completion ────────────────────────────────────────────────
 
-export async function generateCommitMessage(diff: string): Promise<string> {
-  if (!diff.trim()) return statFallback(diff);
+interface OpenAIChatResponse {
+  choices?: Array<{ message?: { content?: string } }>;
+}
 
-  const config = await loadConfig();
-  const truncated = truncateDiff(diff);
+async function callOpenAI(config: GitPalConfig, prompt: string, maxTokens = 80): Promise<string | null> {
+  if (!config.openai_api_key) return null;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15_000);
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${config.openai_api_key}`,
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: config.openai_model,
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: maxTokens,
+        temperature: 0.3,
+      }),
+    });
 
+    clearTimeout(timeout);
+    if (!response.ok) return null;
+
+    const data = await response.json() as OpenAIChatResponse;
+    return data.choices?.[0]?.message?.content?.trim() ?? null;
+  } catch {
+    clearTimeout(timeout);
+    return null;
+  }
+}
+
+// ── Ollama (legacy fallback) ──────────────────────────────────────────────
+
+interface OllamaResponse {
+  response?: string;
+}
+
+async function callOllama(config: GitPalConfig, prompt: string): Promise<string | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+
+  try {
     const response = await fetch(`${config.ollama_url}/api/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: controller.signal,
       body: JSON.stringify({
         model: config.ollama_model,
-        prompt: PROMPT_TEMPLATE(truncated),
+        prompt,
         stream: false,
         options: { temperature: 0.3, num_predict: 80 },
       }),
     });
 
     clearTimeout(timeout);
+    if (!response.ok) return null;
 
-    if (!response.ok) return statFallback(diff);
-
-    const data = await response.json() as { response?: string };
-    const message = (data.response ?? "").trim().replace(/^["']|["']$/g, "");
-
-    if (!message || message.length < 5 || isVague(message)) {
-      return statFallback(diff);
-    }
-
-    return message.length > 72 ? message.substring(0, 72) : message;
+    const data = await response.json() as OllamaResponse;
+    return data.response?.trim() ?? null;
   } catch {
+    clearTimeout(timeout);
+    return null;
+  }
+}
+
+// ── Unified AI call ───────────────────────────────────────────────────────
+
+/** Send a prompt to the configured AI provider. Returns null on failure. */
+export async function aiComplete(prompt: string, maxTokens = 80): Promise<string | null> {
+  const config = await loadConfig();
+
+  if (config.ai_provider === "openai" && config.openai_api_key) {
+    return callOpenAI(config, prompt, maxTokens);
+  }
+
+  return callOllama(config, prompt);
+}
+
+// ── Main export: commit messages ────────────────────────────────────────────
+
+export async function generateCommitMessage(diff: string): Promise<string> {
+  if (!diff.trim()) return statFallback(diff);
+
+  const truncated = truncateDiff(diff);
+  const message = await aiComplete(COMMIT_PROMPT(truncated));
+
+  if (!message || message.length < 5 || isVague(message)) {
     return statFallback(diff);
   }
+
+  // Strip wrapping quotes if present
+  const cleaned = message.replace(/^["']|["']$/g, "");
+  return cleaned.length > 72 ? cleaned.substring(0, 72) : cleaned;
 }
 
 export async function isOllamaRunning(): Promise<boolean> {
@@ -141,4 +201,26 @@ export async function isOllamaRunning(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/** Check if the configured AI provider is reachable */
+export async function isAIAvailable(): Promise<boolean> {
+  const config = await loadConfig();
+
+  if (config.ai_provider === "openai" && config.openai_api_key) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5_000);
+      const res = await fetch("https://api.openai.com/v1/models", {
+        headers: { "Authorization": `Bearer ${config.openai_api_key}` },
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  return isOllamaRunning();
 }

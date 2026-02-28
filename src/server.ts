@@ -321,13 +321,34 @@ async function handleRequest(req: Request): Promise<Response> {
     return jsonResponse({ ok: result.exitCode === 0, output });
   }
 
+  // Serve screenshot images
+  if (pathname.startsWith("/screenshots/") && req.method === "GET") {
+    const filename = pathname.slice("/screenshots/".length);
+    if (filename.includes("..") || filename.includes("/")) {
+      return new Response("Forbidden", { status: 403 });
+    }
+    const imgPath = join(HOME, ".gitpal", "screenshots", filename);
+    if (!existsSync(imgPath)) return new Response("Not found", { status: 404 });
+    const file = Bun.file(imgPath);
+    return new Response(file, { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=300" } });
+  }
+
   if (pathname === "/api/digest" && req.method === "GET") {
+    // Try new gazette JSON first, fall back to legacy markdown
+    const gazettePath = join(HOME, ".gitpal", "log", "gazette.json");
+    if (existsSync(gazettePath)) {
+      try {
+        const raw = readFileSync(gazettePath, "utf8");
+        const data = JSON.parse(raw);
+        return jsonResponse(data);
+      } catch { /* fall through to legacy */ }
+    }
+    // Legacy markdown fallback
     const digestPath = join(HOME, ".gitpal", "log", "digest.md");
     if (!existsSync(digestPath)) {
       return jsonResponse({ content: null, generated: null });
     }
     const content = readFileSync(digestPath, "utf8");
-    // Extract generated timestamp from first two lines
     const lines = content.split("\n");
     const generated = lines[1]?.replace(/^\*Generated at (.+)\*$/, "$1").trim() ?? null;
     return jsonResponse({ content, generated });
