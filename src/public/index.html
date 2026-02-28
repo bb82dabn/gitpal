@@ -1055,7 +1055,7 @@
       const tabDigest = document.getElementById("tab-digest");
       const mainGrid = document.querySelector(".main-grid");
       const digestPanel = document.getElementById("digest-panel");
-      let currentEdition = "morning";
+      let currentEdition = (() => { const h = new Date().getHours(); if (h >= 18) return 'evening'; if (h >= 12) return 'noon'; if (h >= 6) return 'morning'; return 'midnight'; })();
       let currentDate = null; // null = today/current
       const pdfBtn = document.getElementById("pdf-download-btn");
       let archivePdfs = {}; // { 'YYYY-MM-DD': ['morning','noon',...] }
@@ -1081,6 +1081,9 @@
           loadArchive();
         }
       }
+
+      // Set active edition button to match currentEdition
+      document.querySelectorAll('.edition-btn').forEach(b => b.classList.toggle('active', b.dataset.edition === currentEdition));
 
       tabDashboard.addEventListener("click", () => showTab("dashboard"));
       tabDigest.addEventListener("click", () => showTab("digest"));
