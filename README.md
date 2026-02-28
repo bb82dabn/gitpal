@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" width="200" alt="GitPal">
+  <img src="assets/gitpal-logo.png" width="200" alt="GitPal">
 </p>
 <h1 align="center">GitPal</h1>
 <p align="center">Git on autopilot. Push, commit, watch, and digest — without thinking about it.</p>
