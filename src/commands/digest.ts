@@ -10,10 +10,11 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { loadConfig } from "../lib/config.ts";
 import { isGitRepo, gitStatus, gitDiff } from "../lib/git.ts";
-import { aiComplete, aiImage } from "../lib/ai.ts";
+import { aiComplete, aiImageToFile } from "../lib/ai.ts";
 import { gp, banner } from "../lib/display.ts";
 import chalk from "chalk";
 import { runReadme } from "./readme.ts";
+import { generateGazettePdf } from "./gazette-pdf.ts";
 
 const HOME = homedir();
 const LOG_DIR = join(HOME, ".gitpal", "log");
@@ -232,7 +233,7 @@ Output ONLY the headline text. No quotes, no period at the end, no markdown.`;
     headline: headline ?? `Updates Ship for ${projectName.charAt(0).toUpperCase() + projectName.slice(1)}`,
     body: body ?? `The ${projectName} project saw ${commits.length} commit(s) in the ${window}, with ${stats.added} lines added and ${stats.removed} removed.`,
   };
-
+}
 async function generateJokeArticles(
   realArticles: GazetteArticle[],
   edition: string,
@@ -282,7 +283,6 @@ Make it absurdist or deadpan. Output ONLY the headline. No quotes, no period, no
     } as GazetteArticle & { joke: true };
   }));
 }
-}
 
 // ── Main export ───────────────────────────────────────────────────────────
 
@@ -298,6 +298,7 @@ export async function runDigest(quiet = false, forceEdition?: "morning" | "noon"
   const now = new Date();
   const dateStr = now.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const timeStr = now.toLocaleTimeString();
+  const dateKey = now.toISOString().slice(0, 10); // e.g. 2026-02-28
 
   // Determine edition based on time of day (or forced override)
   const hour = now.getHours();
@@ -373,16 +374,20 @@ export async function runDigest(quiet = false, forceEdition?: "morning" | "noon"
     sorted[0]!.featured = true;
     const feat = sorted[0]!;
     if (!quiet) gp.info(`Generating illustration for "${feat.project}"...`);
+    const featImgPath = join(SCREENSHOTS_DIR, `gazette-${dateKey}-${editionKey}-${feat.project}.png`);
     const featPrompt = `A vintage newspaper woodcut engraving illustration for a tech article titled "${feat.headline}" about a software project called "${feat.project}". Style: 1920s editorial illustration, black and white crosshatching, dramatic composition, absolutely no text or words in the image.`;
-    feat.aiGeneratedImage = await aiImage(featPrompt, "natural").catch(() => null);
+    const featSaved = await aiImageToFile(featPrompt, featImgPath, "natural").catch(() => null);
+    if (featSaved) feat.aiGeneratedImage = `/screenshots/gazette-${dateKey}-${editionKey}-${feat.project}.png`;
   }
 
   // ── Joke articles (Comics & Oddities section) ────────────────────────────
   if (!quiet) gp.info("Writing joke articles + generating cartoons...");
   const jokeArticles = await generateJokeArticles(articles, edition);
   await Promise.all(jokeArticles.map(async (joke) => {
+    const jokeImgPath = join(SCREENSHOTS_DIR, `gazette-${dateKey}-${editionKey}-${joke.project}-joke.png`);
     const jokePrompt = `A satirical editorial cartoon for a funny tech newspaper article titled "${joke.headline}" about software project "${joke.project}". Style: absurdist pen-and-ink comic, exaggerated characters, humorous. Absolutely no text or words in the image.`;
-    joke.aiGeneratedImage = await aiImage(jokePrompt, "vivid").catch(() => null);
+    const jokeSaved = await aiImageToFile(jokePrompt, jokeImgPath, "vivid").catch(() => null);
+    if (jokeSaved) joke.aiGeneratedImage = `/screenshots/gazette-${dateKey}-${editionKey}-${joke.project}-joke.png`;
   }));
   articles.push(...jokeArticles);
 
@@ -428,10 +433,17 @@ export async function runDigest(quiet = false, forceEdition?: "morning" | "noon"
   mkdirSync(LOG_DIR, { recursive: true });
 
   // Archive by date: ~/.gitpal/log/gazette/YYYY-MM-DD/morning.json
-  const dateKey = now.toISOString().slice(0, 10); // e.g. 2026-02-28
   const archiveDayDir = join(GAZETTE_ARCHIVE_DIR, dateKey);
   mkdirSync(archiveDayDir, { recursive: true });
   writeFileSync(join(archiveDayDir, `${editionKey}.json`), JSON.stringify(gazette, null, 2));
+
+  // Generate PDF archive
+  if (!quiet) gp.info("Generating PDF...");
+  const pdfPath = await generateGazettePdf(gazette, archiveDayDir, editionKey).catch(() => null);
+  if (!quiet) {
+    if (pdfPath) gp.success(`PDF saved: ${pdfPath}`);
+    else gp.warn("PDF generation failed (non-fatal)");
+  }
 
   // Current-edition files (morning/noon/evening)
   const editionPath = editionKey === "morning" ? GAZETTE_MORNING_PATH

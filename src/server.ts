@@ -323,12 +323,30 @@ async function handleRequest(req: Request): Promise<Response> {
     return new Response(file, { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=300" } });
   }
 
+  // PDF download: GET /api/digest/pdf?date=YYYY-MM-DD&edition=morning|noon|evening|midnight
+  if (pathname === "/api/digest/pdf" && req.method === "GET") {
+    const date = url.searchParams.get("date");
+    const edition = url.searchParams.get("edition") ?? "morning";
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return new Response("Missing or invalid date", { status: 400 });
+    }
+    const pdfPath = join(HOME, ".gitpal", "log", "gazette", date, `${edition}.pdf`);
+    if (!existsSync(pdfPath)) return new Response("PDF not found", { status: 404 });
+    const file = Bun.file(pdfPath);
+    const filename = `GitPal-Gazette-${date}-${edition}.pdf`;
+    return new Response(file, { headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Cache-Control": "public, max-age=86400",
+    }});
+  }
+
   // Archive index: GET /api/digest/archive
   if (pathname === "/api/digest/archive" && req.method === "GET") {
     const archiveDir = join(HOME, ".gitpal", "log", "gazette");
     if (!existsSync(archiveDir)) return jsonResponse([]);
-    const EDITIONS = ["morning", "noon", "evening"] as const;
-    const days: Array<{ date: string; editions: string[] }> = [];
+    const EDITIONS = ["morning", "noon", "evening", "midnight"] as const;
+    const days: Array<{ date: string; editions: string[]; pdfs: string[] }> = [];
     let entries: string[] = [];
     try { entries = readdirSync(archiveDir); } catch { return jsonResponse([]); }
     const dateDirs = entries
@@ -338,7 +356,8 @@ async function handleRequest(req: Request): Promise<Response> {
     for (const date of dateDirs) {
       const dayDir = join(archiveDir, date);
       const editions = EDITIONS.filter(ed => existsSync(join(dayDir, `${ed}.json`)));
-      if (editions.length > 0) days.push({ date, editions });
+      const pdfs = EDITIONS.filter(ed => existsSync(join(dayDir, `${ed}.pdf`)));
+      if (editions.length > 0) days.push({ date, editions, pdfs });
     }
     return jsonResponse(days);
   }

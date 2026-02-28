@@ -180,8 +180,7 @@ interface OpenAIImageResponse {
 }
 
 /**
- * Generate an image via DALL-E 3 and return the URL, or null on failure.
- * style: 'vivid' (dramatic) | 'natural' (realistic)
+ * Generate an image via DALL-E 3 and return the remote URL, or null on failure.
  */
 export async function aiImage(
   prompt: string,
@@ -189,26 +188,14 @@ export async function aiImage(
 ): Promise<string | null> {
   const config = await loadConfig();
   if (!config.openai_api_key) return null;
-
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 60_000);
-
   try {
     const response = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${config.openai_api_key}`,
-      },
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${config.openai_api_key}` },
       signal: controller.signal,
-      body: JSON.stringify({
-        model: "dall-e-3",
-        prompt,
-        n: 1,
-        size: "1024x1024",
-        style,
-        response_format: "url",
-      }),
+      body: JSON.stringify({ model: "dall-e-3", prompt, n: 1, size: "1024x1024", style, response_format: "url" }),
     });
     clearTimeout(timeout);
     if (!response.ok) return null;
@@ -216,6 +203,28 @@ export async function aiImage(
     return data.data?.[0]?.url ?? null;
   } catch {
     clearTimeout(timeout);
+    return null;
+  }
+}
+
+/**
+ * Generate a DALL-E 3 image and download it to a local file path.
+ * Returns the local file path on success, or null on failure.
+ */
+export async function aiImageToFile(
+  prompt: string,
+  outPath: string,
+  style: "vivid" | "natural" = "vivid",
+): Promise<string | null> {
+  const url = await aiImage(prompt, style);
+  if (!url) return null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    await Bun.write(outPath, buf);
+    return outPath;
+  } catch {
     return null;
   }
 }

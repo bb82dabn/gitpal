@@ -839,6 +839,9 @@
               <button class="edition-btn" data-edition="evening" type="button">☾ Evening</button>
               <button class="edition-btn" data-edition="midnight" type="button">★ Midnight</button>
             </nav>
+            <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+              <a id="pdf-download-btn" href="#" target="_blank" style="display:none;font-family:var(--mono);font-size:11px;font-weight:500;padding:6px 12px;border-radius:6px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text-2);text-decoration:none;transition:border-color 0.15s,color 0.15s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='';this.style.color=''">&#8595; PDF</a>
+            </div>
             <div id="gazette-root"></div>
           </div>
         </div>
@@ -1054,6 +1057,14 @@
       const digestPanel = document.getElementById("digest-panel");
       let currentEdition = "morning";
       let currentDate = null; // null = today/current
+      const pdfBtn = document.getElementById("pdf-download-btn");
+
+      function updatePdfBtn() {
+        if (!currentDate) { pdfBtn.style.display = 'none'; return; }
+        const url = `/api/digest/pdf?date=${encodeURIComponent(currentDate)}&edition=${encodeURIComponent(currentEdition)}`;
+        pdfBtn.href = url;
+        pdfBtn.style.display = '';
+      }
 
       function showTab(name) {
         const isDashboard = name === "dashboard";
@@ -1077,6 +1088,7 @@
         document.querySelectorAll(".edition-btn").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         currentEdition = btn.dataset.edition;
+        updatePdfBtn();
         refreshDigest();
       });
 
@@ -1084,6 +1096,7 @@
       document.getElementById("archive-today-btn").addEventListener("click", () => {
         currentDate = null;
         document.querySelectorAll(".archive-date-btn").forEach(b => b.classList.remove("active"));
+        updatePdfBtn();
         refreshDigest();
       });
 
@@ -1126,6 +1139,7 @@
               currentDate = btn.dataset.date;
               currentEdition = btn.dataset.edition;
               document.querySelectorAll(".edition-btn").forEach(b => b.classList.toggle("active", b.dataset.edition === currentEdition));
+              updatePdfBtn();
               refreshDigest();
             });
           });
@@ -1166,60 +1180,69 @@
           }
         }
 
-        const featured = data.articles.find(a => a.featured && !a.joke) || data.articles.find(a => !a.joke) || data.articles[0];
-        const jokes = data.articles.filter(a => a.joke);
-        const others = data.articles.filter(a => a !== featured && !a.joke);
+        const featured = data.articles.find(a => a.featured) || data.articles[0];
+        const allOthers = data.articles.filter(a => a !== featured);
+        // Real articles go in main column, joke-only articles go to sidebar if mixed edition
+        const allJoke = data.articles.every(a => a.joke);
+        // In an all-joke edition, lay out like a real paper. In mixed, jokes go to Comics section.
+        const mainArticles = allJoke ? allOthers : allOthers.filter(a => !a.joke);
+        const comicsArticles = allJoke ? [] : allOthers.filter(a => a.joke);
+
+        function articleImg(a) {
+          if (a.aiGeneratedImage) return esc(a.aiGeneratedImage);
+          if (a.screenshot) return '/screenshots/' + esc(a.screenshot);
+          return null;
+        }
 
         let html = '<div class="gazette">';
         html += '<div class="gz-masthead">';
         html += '<hr class="gz-masthead-rule">';
-        html += '<h1 class="gz-title">' + esc(data.name || "The GitPal Gazette") + "</h1>";
-        html += '<div class="gz-dateline">Vol. I &middot; ' + esc((data.date || "").toUpperCase()) + " &middot; " + esc((data.edition || "").toUpperCase()) + "</div>";
-        html += "</div>";
+        html += '<h1 class="gz-title">' + esc(data.name || 'The GitPal Gazette') + '</h1>';
+        html += '<div class="gz-dateline">Vol. I &middot; ' + esc((data.date || '').toUpperCase()) + ' &middot; ' + esc((data.edition || '').toUpperCase()) + '</div>';
+        html += '</div>';
 
         html += '<div class="gz-body-grid"><div class="gz-main">';
 
         if (featured) {
           html += '<div class="gz-featured">';
-          html += '<h2 class="gz-featured-headline">' + esc(featured.headline) + "</h2>";
+          html += '<h2 class="gz-featured-headline">' + esc(featured.headline) + '</h2>';
           html += '<div class="gz-featured-inner">';
-          const featImg = featured.aiGeneratedImage || (featured.screenshot ? '/screenshots/' + esc(featured.screenshot) : null);
-          if (featImg) {
-            html += '<img class="gz-featured-img" src="' + esc(featImg) + '" alt="' + esc(featured.project) + '" onerror="this.style.display=\'none\'">';
-          }
+          const featImg = articleImg(featured);
+          if (featImg) html += '<img class="gz-featured-img" src="' + featImg + '" alt="' + esc(featured.project) + '" onerror="this.style.display=\'none\'">';
           html += '<div class="gz-featured-text">';
-          html += '<p class="gz-featured-body">' + esc(featured.body) + "</p>";
-          html += '<div class="gz-byline">' + esc(featured.project) + " &middot; " + featured.commits + " commit(s) &middot; +" + featured.linesAdded + " -" + featured.linesRemoved + "</div>";
-          html += "</div></div></div>";
+          html += '<p class="gz-featured-body">' + esc(featured.body) + '</p>';
+          const bylineLabel = featured.joke && !allJoke ? ' &middot; satire' : ' &middot; ' + featured.commits + ' commit(s) &middot; +' + featured.linesAdded + ' -' + featured.linesRemoved;
+          html += '<div class="gz-byline">' + esc(featured.project) + bylineLabel + '</div>';
+          html += '</div></div></div>';
         }
 
-        if (others.length > 0) {
+        if (mainArticles.length > 0) {
           html += '<div class="gz-articles">';
-          for (const a of others) {
+          for (const a of mainArticles) {
             html += '<div class="gz-article">';
             html += '<h3 class="gz-article-headline">' + esc(a.headline) + '</h3>';
-            if (a.screenshot) {
-              html += '<img class="gz-article-img" src="/screenshots/' + esc(a.screenshot) + '" alt="' + esc(a.project) + '" onerror="this.style.display=\'none\'">';
-            }
+            const img = articleImg(a);
+            if (img) html += '<img class="gz-article-img" src="' + img + '" alt="' + esc(a.project) + '" onerror="this.style.display=\'none\'">';
             html += '<p class="gz-article-body">' + esc(a.body) + '</p>';
-            html += '<div class="gz-byline">' + esc(a.project) + ' &middot; ' + a.commits + ' commit(s) &middot; +' + a.linesAdded + ' -' + a.linesRemoved + '</div>';
+            const aByline = a.joke && !allJoke ? ' &middot; satire' : ' &middot; ' + a.commits + ' commit(s) &middot; +' + a.linesAdded + ' -' + a.linesRemoved;
+            html += '<div class="gz-byline">' + esc(a.project) + aByline + '</div>';
             html += '</div>';
           }
           html += '</div>';
         }
 
-        if (jokes.length > 0) {
+        if (comicsArticles.length > 0) {
           html += '<div class="gz-comics">';
           html += '<div class="gz-comics-title">Comics &amp; Oddities</div>';
-          for (const a of jokes) {
+          for (const a of comicsArticles) {
             html += '<div class="gz-joke-article">';
-            if (a.aiGeneratedImage) {
-              html += '<img class="gz-joke-img" src="' + esc(a.aiGeneratedImage) + '" alt="' + esc(a.project) + '" onerror="this.style.display=\'none\'">';
-            }
+            const jImg = articleImg(a);
+            if (jImg) html += '<img class="gz-joke-img" src="' + jImg + '" alt="' + esc(a.project) + '" onerror="this.style.display=\'none\'">';
+            html += '<div>';
             html += '<h3 class="gz-joke-headline">' + esc(a.headline) + '</h3>';
             html += '<p class="gz-joke-body">' + esc(a.body) + '</p>';
             html += '<div class="gz-byline gz-joke-byline">' + esc(a.project) + ' &middot; satire</div>';
-            html += '</div>';
+            html += '</div></div>';
           }
           html += '</div>';
         }
