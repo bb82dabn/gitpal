@@ -34,13 +34,20 @@ function log(msg: string): void {
   } catch { /* non-fatal */ }
 }
 
-function countFiles(dir: string): number {
+function countFiles(dir: string, depth = 0): number {
+  if (depth > 3) return 0;
   try {
-    return readdirSync(dir).filter((f) => {
+    let count = 0;
+    for (const entry of readdirSync(dir)) {
+      if (["node_modules", ".git", "dist", "build", ".cache", "__pycache__", "venv", ".next"].includes(entry)) continue;
       try {
-        return statSync(join(dir, f)).isFile();
-      } catch { return false; }
-    }).length;
+        const stat = statSync(join(dir, entry));
+        if (stat.isFile()) count++;
+        else if (stat.isDirectory()) count += countFiles(join(dir, entry), depth + 1);
+        if (count >= 1) return count; // short-circuit — we just need to know it's non-empty
+      } catch { /* skip */ }
+    }
+    return count;
   } catch { return 0; }
 }
 
