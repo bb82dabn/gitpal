@@ -424,12 +424,121 @@
         padding: 8px 4px;
       }
 
+      .tab-bar {
+        display: flex;
+        gap: 4px;
+        margin-top: 18px;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 0;
+      }
+
+      .tab-btn {
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        color: var(--muted);
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 8px 16px 10px;
+        cursor: pointer;
+        transition: color 0.2s ease, border-color 0.2s ease;
+        margin-bottom: -1px;
+      }
+
+      .tab-btn:hover {
+        color: var(--text);
+      }
+
+      .tab-btn.active {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+      }
+
+      .digest-panel {
+        display: none;
+        margin-top: 20px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 24px 28px;
+        box-shadow: var(--shadow);
+        max-width: 860px;
+      }
+
+      .digest-panel.visible {
+        display: block;
+      }
+
+      .digest-generated {
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 20px;
+      }
+
+      .digest-content h1 {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--text);
+        margin: 0 0 6px;
+      }
+
+      .digest-content h2 {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--cyan);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin: 24px 0 10px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .digest-content h3 {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--blue);
+        margin: 14px 0 6px;
+      }
+
+      .digest-content ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .digest-content li {
+        font-size: 13px;
+        color: var(--text);
+        padding: 6px 10px;
+        background: var(--panel-2);
+        border-radius: 8px;
+        border: 1px solid rgba(30, 39, 52, 0.8);
+        font-family: "JetBrains Mono", monospace;
+      }
+
+      .digest-content li .digest-ok { color: var(--accent); }
+      .digest-content li .digest-warn { color: var(--warn); }
+      .digest-content li strong { color: var(--text); font-weight: 600; }
+      .digest-content em { color: var(--muted); font-style: italic; }
+
+      .digest-hint {
+        margin-top: 20px;
+        font-size: 12px;
+        color: var(--muted);
+        font-family: "JetBrains Mono", monospace;
+      }
+
       @media (max-width: 980px) {
         .main-grid {
           grid-template-columns: 1fr;
         }
       }
-    </style>
   </head>
   <body>
     <div class="app">
@@ -443,6 +552,11 @@
           <button class="btn" id="refresh-btn" type="button">Refresh</button>
         </div>
       </header>
+
+      <nav class="tab-bar">
+        <button class="tab-btn active" id="tab-dashboard" type="button">Dashboard</button>
+        <button class="tab-btn" id="tab-digest" type="button">Digest</button>
+      </nav>
 
       <main class="main-grid">
         <section class="panel">
@@ -469,6 +583,12 @@
           </div>
         </section>
       </main>
+
+      <div class="digest-panel" id="digest-panel">
+        <div class="digest-generated" id="digest-generated"></div>
+        <div class="digest-content" id="digest-content"></div>
+        <div class="digest-hint">Run <code>gp digest</code> in your terminal to refresh.</div>
+      </div>
     </div>
 
     <script>
@@ -710,6 +830,108 @@
       refreshDoctor();
       setInterval(refreshProjectsAndCommits, 15000);
       setInterval(refreshDoctor, 30000);
+
+      // --- Tab switching ---
+      const tabDashboard = document.getElementById("tab-dashboard");
+      const tabDigest = document.getElementById("tab-digest");
+      const mainGrid = document.querySelector(".main-grid");
+      const digestPanel = document.getElementById("digest-panel");
+      const digestGenerated = document.getElementById("digest-generated");
+      const digestContent = document.getElementById("digest-content");
+
+      function showTab(name) {
+        const isDashboard = name === "dashboard";
+        tabDashboard.classList.toggle("active", isDashboard);
+        tabDigest.classList.toggle("active", !isDashboard);
+        mainGrid.style.display = isDashboard ? "" : "none";
+        digestPanel.classList.toggle("visible", !isDashboard);
+        if (!isDashboard) refreshDigest();
+      }
+
+      tabDashboard.addEventListener("click", () => showTab("dashboard"));
+      tabDigest.addEventListener("click", () => showTab("digest"));
+
+      // --- Digest ---
+      function parseMarkdown(md) {
+        const lines = md.split("\n");
+        let html = "";
+        let inList = false;
+
+        for (const raw of lines) {
+          const line = raw.trimEnd();
+
+          if (line.startsWith("# ")) {
+            if (inList) { html += "</ul>"; inList = false; }
+            html += `<h1>${escHtml(line.slice(2))}</h1>`;
+            continue;
+          }
+          if (line.startsWith("## ")) {
+            if (inList) { html += "</ul>"; inList = false; }
+            html += `<h2>${escHtml(line.slice(3))}</h2>`;
+            continue;
+          }
+          if (line.startsWith("### ")) {
+            if (inList) { html += "</ul>"; inList = false; }
+            html += `<h3>${escHtml(line.slice(4))}</h3>`;
+            continue;
+          }
+          if (line.startsWith("- ") || line.startsWith("* ")) {
+            if (!inList) { html += "<ul>"; inList = true; }
+            const inner = formatInline(line.slice(2));
+            html += `<li>${inner}</li>`;
+            continue;
+          }
+          if (line.startsWith("*") && line.endsWith("*") && line.length > 2) {
+            if (inList) { html += "</ul>"; inList = false; }
+            html += `<em>${escHtml(line.slice(1, -1))}</em>`;
+            continue;
+          }
+          if (line === "") {
+            if (inList) { html += "</ul>"; inList = false; }
+            continue;
+          }
+          if (inList) { html += "</ul>"; inList = false; }
+          html += `<p>${formatInline(line)}</p>`;
+        }
+
+        if (inList) html += "</ul>";
+        return html;
+      }
+
+      function escHtml(str) {
+        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      }
+
+      function formatInline(str) {
+        // bold: **text**
+        str = str.replace(/\*\*(.+?)\*\*/g, (_, t) => `<strong>${escHtml(t)}</strong>`);
+        // italic: *text*
+        str = str.replace(/\*(.+?)\*/g, (_, t) => `<em>${escHtml(t)}</em>`);
+        // checkmarks / warnings
+        str = str.replace(/✓/g, '<span class="digest-ok">✓</span>');
+        str = str.replace(/⚠/g, '<span class="digest-warn">⚠</span>');
+        // escape remaining unhandled chars
+        return str;
+      }
+
+      async function refreshDigest() {
+        try {
+          const data = await fetchJson("/api/digest");
+          if (!data.content) {
+            digestContent.innerHTML = '<p class="empty-state">No digest found. Run <code>gp digest</code> to generate one.</p>';
+            digestGenerated.textContent = "";
+            return;
+          }
+          digestContent.innerHTML = parseMarkdown(data.content);
+          digestGenerated.textContent = data.generated ? `Generated: ${data.generated}` : "";
+        } catch {
+          digestContent.innerHTML = '<p class="empty-state">Could not load digest.</p>';
+        }
+      }
+
+      setInterval(() => {
+        if (digestPanel.classList.contains("visible")) refreshDigest();
+      }, 300000);
     </script>
   </body>
 </html>

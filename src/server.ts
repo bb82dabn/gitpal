@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { gitDiff, gitLog, gitStatus, hasRemote, isGitRepo } from "./lib/git.ts";
 import { loadConfig, type GitPalConfig } from "./lib/config.ts";
 
@@ -319,6 +319,18 @@ async function handleRequest(req: Request): Promise<Response> {
     const result = await Bun.$`gp ${payload.action} --yes --quiet`.cwd(dir).nothrow();
     const output = `${result.stdout.toString()}${result.stderr.toString()}`.trim();
     return jsonResponse({ ok: result.exitCode === 0, output });
+  }
+
+  if (pathname === "/api/digest" && req.method === "GET") {
+    const digestPath = join(HOME, ".gitpal", "log", "digest.md");
+    if (!existsSync(digestPath)) {
+      return jsonResponse({ content: null, generated: null });
+    }
+    const content = readFileSync(digestPath, "utf8");
+    // Extract generated timestamp from first two lines
+    const lines = content.split("\n");
+    const generated = lines[1]?.replace(/^\*Generated at (.+)\*$/, "$1").trim() ?? null;
+    return jsonResponse({ content, generated });
   }
 
   return new Response("Not found", { status: 404 });
