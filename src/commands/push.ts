@@ -9,7 +9,6 @@ import { gp, banner } from "../lib/display.ts";
 import chalk from "chalk";
 import { hasDeployTarget, runDeploy } from "../lib/deploy.ts";
 import { refreshContext } from "../lib/context.ts";
-import { runReadme } from "./readme.ts";
 
 const HOME = homedir();
 const QUEUE_FILE = join(HOME, ".gitpal", "push-queue.json");
@@ -183,10 +182,6 @@ export async function runPush(dir: string = process.cwd(), opts: PushOptions = {
 
   // ── Refresh context + regenerate README in background ───────────────────
   refreshContext(dir, true).catch(() => { /* non-fatal */ });
-  if (pushResult === "ok") {
-    // Fire-and-forget: update README + GitHub metadata after every push
-    runReadme(dir).catch(() => { /* non-fatal */ });
-  }
 
   if (!quiet && pushResult === "ok") {
     const config = await loadConfig();
