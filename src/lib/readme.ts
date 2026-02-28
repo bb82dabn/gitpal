@@ -254,6 +254,75 @@ export async function writeReadme(dir: string): Promise<"written" | "failed"> {
   }
 }
 
+const CHANGELOG_HEADER = "## Changelog";
+
+/**
+ * Update only the Changelog section of an existing README.
+ * If no README exists, falls back to generating a new one.
+ * If README exists but has no Changelog section, appends one.
+ */
+export async function updateReadmeChangelog(dir: string): Promise<"updated" | "written" | "failed"> {
+  const readmePath = join(dir, "README.md");
+  const hasReadme = existsSync(readmePath);
+
+  // No README at all — generate fresh
+  if (!hasReadme) return (await writeReadme(dir)) === "failed" ? "failed" : "written";
+
+  const existing = readFileSync(readmePath, "utf8");
+
+  // Get recent commits for changelog
+  let commits = "";
+  try {
+    const r = await Bun.$`git -C ${dir} log --oneline -20 --since="7 days ago"`.quiet().nothrow();
+    commits = r.stdout.toString().trim();
+  } catch {}
+
+  if (!commits) return "updated"; // nothing to log
+
+  const name = basename(dir);
+  const prompt = [
+    `You are updating the changelog for the project "${name}".`,
+    "Write a concise changelog entry for the most recent changes.",
+    "Group related commits. Use this format:",
+    "",
+    "### YYYY-MM-DD",
+    "- Brief description of change (from commit messages)",
+    "- Another change",
+    "",
+    "Rules:",
+    "- Summarize and group related commits — don't just list every commit verbatim",
+    "- Focus on what changed from the user's perspective",
+    "- Keep it short — 3-8 bullet points max",
+    "- Output ONLY the markdown changelog entry. No preamble.",
+    "",
+    `Recent commits:\n${commits}`,
+  ].join("\n");
+
+  try {
+    const entry = await aiComplete(prompt, 500);
+    if (!entry || entry.length < 20) return "updated";
+
+    // Split README at changelog section
+    const changelogIdx = existing.indexOf(CHANGELOG_HEADER);
+    let before: string;
+    let existingChangelog: string;
+
+    if (changelogIdx >= 0) {
+      before = existing.substring(0, changelogIdx).trimEnd();
+      existingChangelog = existing.substring(changelogIdx + CHANGELOG_HEADER.length).trim();
+    } else {
+      before = existing.trimEnd();
+      existingChangelog = "";
+    }
+
+    const newReadme = before + "\n\n" + CHANGELOG_HEADER + "\n\n" + entry.trim() + "\n\n" + existingChangelog;
+    writeFileSync(readmePath, newReadme.trimEnd() + "\n");
+    return "updated";
+  } catch {
+    return "failed";
+  }
+}
+
 // ── Repo metadata (description, topics, homepage) ────────────────────────────
 
 export interface RepoMeta {

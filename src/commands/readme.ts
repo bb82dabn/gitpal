@@ -1,7 +1,8 @@
-import { writeReadme, generateRepoMeta, applyRepoMeta } from "../lib/readme.ts";
+import { writeReadme, updateReadmeChangelog, generateRepoMeta, applyRepoMeta } from "../lib/readme.ts";
 import { isAIAvailable } from "../lib/ai.ts";
 import { gp, banner } from "../lib/display.ts";
-import { basename } from "node:path";
+import { basename, join } from "node:path";
+import { existsSync } from "node:fs";
 
 export async function runReadme(dir: string = process.cwd()): Promise<void> {
   banner();
@@ -13,12 +14,21 @@ export async function runReadme(dir: string = process.cwd()): Promise<void> {
     gp.info("Configure OpenAI (openai_api_key) or start Ollama for AI-powered READMEs.");
   } else {
     gp.info("Reading your project files...");
-    gp.info("Generating README with AI (this takes 10-30 seconds)...");
   }
 
-  const result = await writeReadme(dir);
+  const readmePath = join(dir, "README.md");
+  const hasReadme = existsSync(readmePath);
 
-  if (result === "written") {
+  let result: string;
+  if (hasReadme) {
+    gp.info("README exists — updating changelog section...");
+    result = await updateReadmeChangelog(dir);
+  } else {
+    gp.info("No README found — generating from scratch...");
+    result = await writeReadme(dir);
+  }
+
+  if (result === "updated" || result === "written") {
     gp.blank();
     gp.success("README.md written.");
 
