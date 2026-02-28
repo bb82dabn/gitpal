@@ -4,784 +4,737 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GitPal Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Playfair+Display:wght@400;700;900&display=swap");
-
       :root {
         color-scheme: dark;
-        --bg: #0d1117;
-        --panel: #101621;
-        --panel-2: #0f141d;
-        --border: #1e2734;
-        --text: #d7dde5;
-        --muted: #8a94a6;
-        --accent: #2ea043;
-        --warn: #d29922;
-        --danger: #f85149;
-        --cyan: #5dd6c0;
-        --blue: #58a6ff;
-        --shadow: 0 18px 50px rgba(4, 10, 18, 0.4);
+        --bg: #080c10;
+        --surface: #0d1219;
+        --surface-2: #111820;
+        --surface-3: #161e28;
+        --border: #1c2633;
+        --border-2: #243040;
+        --text: #e2e8f0;
+        --text-2: #94a3b8;
+        --text-3: #5a6a7e;
+        --accent: #22c55e;
+        --accent-dim: rgba(34,197,94,0.12);
+        --accent-glow: rgba(34,197,94,0.25);
+        --warn: #f59e0b;
+        --warn-dim: rgba(245,158,11,0.12);
+        --danger: #ef4444;
+        --danger-dim: rgba(239,68,68,0.12);
+        --blue: #3b82f6;
+        --blue-dim: rgba(59,130,246,0.12);
+        --teal: #14b8a6;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+        --shadow: 0 4px 24px rgba(0,0,0,0.5);
+        --shadow-lg: 0 12px 48px rgba(0,0,0,0.6);
+        --radius: 10px;
+        --radius-sm: 6px;
+        --mono: "Geist Mono", "JetBrains Mono", monospace;
+        --sans: "Outfit", system-ui, sans-serif;
+        --serif: "Instrument Serif", Georgia, serif;
       }
 
-      * {
-        box-sizing: border-box;
-      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
 
       body {
-        margin: 0;
-        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
-        background:
-          radial-gradient(1200px 700px at 10% -10%, rgba(42, 68, 96, 0.45), transparent 55%),
-          radial-gradient(1000px 600px at 95% 0%, rgba(20, 62, 82, 0.4), transparent 60%),
-          #0d1117;
+        font-family: var(--sans);
+        background: var(--bg);
+        background-image:
+          radial-gradient(ellipse 900px 600px at 0% 0%, rgba(34,197,94,0.04) 0%, transparent 60%),
+          radial-gradient(ellipse 700px 500px at 100% 100%, rgba(59,130,246,0.04) 0%, transparent 60%);
         color: var(--text);
         min-height: 100vh;
+        font-size: 14px;
+        line-height: 1.5;
       }
 
+      /* ── Layout ── */
       .app {
-        max-width: 1200px;
+        max-width: 1280px;
         margin: 0 auto;
-        padding: 28px 28px 40px;
+        padding: 0 24px 48px;
       }
 
+      /* ── Header ── */
       .header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 16px;
-        padding-bottom: 18px;
+        padding: 20px 0 0;
+        margin-bottom: 24px;
         border-bottom: 1px solid var(--border);
+        padding-bottom: 20px;
       }
 
       .brand {
-        font-size: 28px;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-      }
-
-      .header-meta {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        font-size: 14px;
-        color: var(--muted);
-      }
-
-      .refresh-status {
         display: flex;
         align-items: center;
         gap: 10px;
       }
 
-      .refresh-indicator {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background: rgba(93, 214, 192, 0.3);
-        box-shadow: 0 0 0 0 rgba(93, 214, 192, 0.25);
+      .brand-icon {
+        width: 32px;
+        height: 32px;
+        background: linear-gradient(135deg, #22c55e, #14b8a6);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        flex-shrink: 0;
       }
 
-      .refresh-indicator.is-loading {
+      .brand-name {
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--text);
+      }
+
+      .brand-tag {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--accent);
+        background: var(--accent-dim);
+        border: 1px solid rgba(34,197,94,0.25);
+        border-radius: 4px;
+        padding: 2px 6px;
+        letter-spacing: 0.05em;
+      }
+
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .status-pill {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-3);
+        padding: 5px 10px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+      }
+
+      .pulse-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--accent);
+        opacity: 0.5;
+      }
+
+      .pulse-dot.active {
+        opacity: 1;
         animation: pulse 1.4s ease-in-out infinite;
       }
 
       @keyframes pulse {
-        0% { box-shadow: 0 0 0 0 rgba(93, 214, 192, 0.35); }
-        70% { box-shadow: 0 0 0 10px rgba(93, 214, 192, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(93, 214, 192, 0); }
+        0%,100% { box-shadow: 0 0 0 0 var(--accent-glow); }
+        50% { box-shadow: 0 0 0 5px transparent; }
       }
 
       .btn {
-        background: linear-gradient(135deg, rgba(46, 160, 67, 0.18), rgba(46, 160, 67, 0.05));
-        border: 1px solid rgba(46, 160, 67, 0.5);
-        color: var(--text);
-        padding: 8px 14px;
+        font-family: var(--sans);
         font-size: 13px;
-        border-radius: 8px;
+        font-weight: 500;
+        padding: 7px 14px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-2);
+        background: var(--surface-2);
+        color: var(--text);
         cursor: pointer;
-        transition: transform 0.2s ease, border-color 0.2s ease;
+        transition: border-color 0.15s, background 0.15s, color 0.15s;
       }
 
       .btn:hover {
-        transform: translateY(-1px);
-        border-color: rgba(46, 160, 67, 0.8);
+        border-color: var(--accent);
+        color: var(--accent);
+        background: var(--accent-dim);
       }
 
+      /* ── Nav tabs ── */
+      .nav {
+        display: flex;
+        gap: 2px;
+        margin-bottom: 20px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 4px;
+        width: fit-content;
+      }
+
+      .tab-btn {
+        font-family: var(--sans);
+        font-size: 13px;
+        font-weight: 500;
+        padding: 6px 16px;
+        border-radius: 7px;
+        border: none;
+        background: transparent;
+        color: var(--text-2);
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+        letter-spacing: 0.01em;
+      }
+
+      .tab-btn:hover { color: var(--text); }
+
+      .tab-btn.active {
+        background: var(--surface-3);
+        color: var(--text);
+        box-shadow: var(--shadow-sm);
+      }
+
+      /* ── Main grid ── */
       .main-grid {
         display: grid;
-        grid-template-columns: 0.85fr 1.6fr;
-        gap: 20px;
-        margin-top: 20px;
+        grid-template-columns: 280px 1fr;
+        gap: 16px;
+        align-items: start;
       }
 
+      /* ── Panel ── */
       .panel {
-        background: var(--panel);
+        background: var(--surface);
         border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 18px;
-        box-shadow: var(--shadow);
+        border-radius: var(--radius);
+        overflow: hidden;
       }
 
-      .panel-header {
+      .panel-head {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 14px;
+        padding: 14px 16px 12px;
+        border-bottom: 1px solid var(--border);
       }
 
       .panel-title {
-        font-size: 14px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
         text-transform: uppercase;
-        letter-spacing: 0.12em;
-        color: var(--muted);
+        color: var(--text-3);
       }
 
+      .panel-badge {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-3);
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 1px 6px;
+      }
+
+      .panel-body {
+        padding: 12px;
+      }
+
+      /* ── Doctor ── */
       .doctor-list {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 6px;
+        padding: 12px;
       }
 
       .doctor-item {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 10px 12px;
-        border-radius: 10px;
-        background: var(--panel-2);
-        border: 1px solid rgba(30, 39, 52, 0.8);
+        padding: 9px 12px;
+        border-radius: var(--radius-sm);
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        transition: border-color 0.15s;
       }
 
-      .doctor-label {
+      .doctor-left {
         display: flex;
         align-items: center;
-        gap: 10px;
-        font-size: 14px;
+        gap: 9px;
+        font-size: 13px;
+        font-weight: 500;
       }
 
       .status-dot {
-        width: 10px;
-        height: 10px;
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
+        flex-shrink: 0;
       }
 
-      .status-pass { background: var(--accent); }
-      .status-warn { background: var(--warn); }
-      .status-fail { background: var(--danger); }
+      .status-pass { background: var(--accent); box-shadow: 0 0 6px var(--accent-glow); }
+      .status-warn { background: var(--warn); box-shadow: 0 0 6px rgba(245,158,11,0.3); }
+      .status-fail { background: var(--danger); box-shadow: 0 0 6px rgba(239,68,68,0.3); }
 
       .doctor-detail {
-        font-family: "JetBrains Mono", monospace;
-        font-size: 12px;
-        color: var(--muted);
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-3);
       }
 
-      .right-column {
+      /* ── Right column ── */
+      .right-col {
         display: flex;
         flex-direction: column;
-        gap: 20px;
+        gap: 16px;
       }
 
+      /* ── Projects grid ── */
       .projects-list {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-        gap: 14px;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 10px;
+        padding: 12px;
       }
 
       .project-card {
-        background: rgba(16, 22, 33, 0.9);
-        border: 1px solid rgba(30, 39, 52, 0.9);
-        border-radius: 12px;
-        padding: 14px;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 12px;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 10px;
+        transition: border-color 0.15s, box-shadow 0.15s;
+        cursor: default;
+      }
+
+      .project-card:hover {
+        border-color: var(--border-2);
+        box-shadow: var(--shadow-sm);
       }
 
       .project-top {
         display: flex;
         align-items: flex-start;
         justify-content: space-between;
-        gap: 10px;
+        gap: 8px;
       }
 
       .project-name {
-        font-size: 16px;
+        font-size: 14px;
         font-weight: 600;
+        color: var(--text);
+        letter-spacing: -0.01em;
+        line-height: 1.3;
+        word-break: break-all;
       }
 
       .project-link {
+        width: 26px;
+        height: 26px;
+        border-radius: 6px;
+        border: 1px solid var(--border-2);
+        background: var(--surface-3);
+        color: var(--text-3);
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 28px;
-        height: 28px;
-        border-radius: 8px;
-        border: 1px solid rgba(88, 166, 255, 0.4);
-        color: var(--blue);
         text-decoration: none;
-        transition: border-color 0.2s ease, color 0.2s ease;
+        flex-shrink: 0;
+        transition: border-color 0.15s, color 0.15s;
       }
 
-      .project-link:hover {
-        border-color: rgba(88, 166, 255, 0.9);
-        color: #9ac7ff;
+      .project-link:hover { border-color: var(--blue); color: var(--blue); }
+      .project-link.disabled { opacity: 0.25; pointer-events: none; }
+
+      .project-commit {
+        font-size: 12px;
+        color: var(--text-2);
+        line-height: 1.4;
       }
 
-      .project-link.disabled {
-        opacity: 0.3;
-        pointer-events: none;
-      }
-
-      .project-meta {
-        font-size: 13px;
-        color: var(--muted);
-      }
-
-      .project-meta strong {
+      .project-commit strong {
         color: var(--text);
-        font-weight: 600;
+        font-weight: 500;
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
-      .project-status {
+      .project-footer {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 8px;
-        font-size: 12px;
       }
 
       .badge {
-        padding: 4px 8px;
+        font-family: var(--mono);
+        font-size: 10px;
+        font-weight: 500;
+        padding: 3px 7px;
         border-radius: 999px;
-        font-weight: 600;
-        font-size: 11px;
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: 4px;
+        letter-spacing: 0.03em;
       }
 
       .badge.clean {
-        background: rgba(46, 160, 67, 0.16);
-        color: #7ee787;
-        border: 1px solid rgba(46, 160, 67, 0.35);
+        background: var(--accent-dim);
+        color: var(--accent);
+        border: 1px solid rgba(34,197,94,0.25);
       }
 
       .badge.dirty {
-        background: rgba(210, 153, 34, 0.14);
-        color: #f2cc60;
-        border: 1px solid rgba(210, 153, 34, 0.35);
+        background: var(--warn-dim);
+        color: var(--warn);
+        border: 1px solid rgba(245,158,11,0.25);
       }
 
       .watcher {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        color: var(--muted);
+        gap: 5px;
+        font-size: 11px;
+        color: var(--text-3);
+        font-family: var(--mono);
       }
 
       .watcher-dot {
-        width: 8px;
-        height: 8px;
+        width: 6px;
+        height: 6px;
         border-radius: 50%;
       }
 
       .watcher-dot.running { background: var(--accent); }
-      .watcher-dot.stopped { background: var(--danger); }
+      .watcher-dot.stopped { background: var(--text-3); }
 
       .actions {
         display: flex;
-        gap: 8px;
+        gap: 6px;
       }
 
       .action-btn {
         flex: 1;
-        background: rgba(16, 22, 33, 0.9);
-        border: 1px solid rgba(48, 59, 76, 0.8);
-        color: var(--text);
-        padding: 8px 10px;
-        font-size: 12px;
-        border-radius: 8px;
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 500;
+        padding: 6px 4px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        background: var(--surface-3);
+        color: var(--text-2);
         cursor: pointer;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 6px;
+        gap: 4px;
         position: relative;
-        transition: border-color 0.2s ease, color 0.2s ease;
+        transition: border-color 0.15s, color 0.15s, background 0.15s;
+        text-transform: lowercase;
       }
 
       .action-btn:hover {
-        border-color: rgba(93, 214, 192, 0.6);
-        color: #e9fef9;
+        border-color: var(--teal);
+        color: var(--teal);
+        background: rgba(20,184,166,0.08);
       }
 
-      .action-btn:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
+      .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
       .spinner {
-        width: 12px;
-        height: 12px;
-        border: 2px solid rgba(93, 214, 192, 0.3);
-        border-top-color: var(--cyan);
+        width: 10px;
+        height: 10px;
+        border: 1.5px solid rgba(20,184,166,0.3);
+        border-top-color: var(--teal);
         border-radius: 50%;
-        animation: spin 0.8s linear infinite;
+        animation: spin 0.7s linear infinite;
         display: none;
       }
 
-      .action-btn.loading .spinner {
-        display: inline-block;
-      }
+      .action-btn.loading .spinner { display: inline-block; }
 
-      @keyframes spin {
-        to { transform: rotate(360deg); }
-      }
+      @keyframes spin { to { transform: rotate(360deg); } }
 
-      .btn-status {
-        font-weight: 700;
-        font-size: 12px;
-      }
-
+      .btn-status { font-weight: 700; font-size: 11px; }
       .btn-status.ok { color: var(--accent); }
       .btn-status.fail { color: var(--danger); }
 
+      /* ── Commit feed ── */
       .commit-feed {
-        position: relative;
         display: flex;
         flex-direction: column;
-        gap: 14px;
-        padding-left: 18px;
-      }
-
-      .commit-feed::before {
-        content: "";
-        position: absolute;
-        left: 6px;
-        top: 0;
-        bottom: 0;
-        width: 2px;
-        background: rgba(46, 160, 67, 0.25);
+        padding: 12px;
+        gap: 0;
+        position: relative;
       }
 
       .commit-entry {
         display: flex;
         gap: 12px;
+        position: relative;
+        padding-bottom: 14px;
+      }
+
+      .commit-entry:last-child { padding-bottom: 0; }
+
+      .commit-left {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+        width: 10px;
+        flex-shrink: 0;
+        padding-top: 5px;
       }
 
       .commit-dot {
-        width: 12px;
-        height: 12px;
+        width: 10px;
+        height: 10px;
         border-radius: 50%;
         background: var(--accent);
-        box-shadow: 0 0 12px rgba(46, 160, 67, 0.6);
-        margin-top: 6px;
+        box-shadow: 0 0 8px var(--accent-glow);
+        flex-shrink: 0;
       }
 
-      .commit-content {
+      .commit-line {
+        width: 1px;
         flex: 1;
-        padding: 10px 12px;
-        border-radius: 10px;
-        background: rgba(16, 22, 33, 0.85);
-        border: 1px solid rgba(30, 39, 52, 0.8);
+        background: linear-gradient(to bottom, rgba(34,197,94,0.3), transparent);
+        margin-top: 4px;
+        min-height: 12px;
       }
 
-      .commit-top {
+      .commit-entry:last-child .commit-line { display: none; }
+
+      .commit-body {
+        flex: 1;
+        padding: 8px 10px;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        min-width: 0;
+      }
+
+      .commit-meta {
         display: flex;
         align-items: center;
-        gap: 10px;
-        font-size: 12px;
-        color: var(--muted);
+        gap: 8px;
         flex-wrap: wrap;
+        margin-bottom: 4px;
       }
 
       .project-chip {
-        padding: 2px 8px;
-        border-radius: 999px;
-        border: 1px solid rgba(93, 214, 192, 0.4);
-        color: var(--cyan);
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
+        font-family: var(--mono);
         font-size: 10px;
+        font-weight: 500;
+        padding: 2px 6px;
+        border-radius: 4px;
+        background: var(--blue-dim);
+        color: var(--blue);
+        border: 1px solid rgba(59,130,246,0.2);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
       }
 
       .commit-hash {
-        font-family: "JetBrains Mono", monospace;
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text-3);
+      }
+
+      .commit-date {
         font-size: 11px;
-        color: #f0f6fc;
+        color: var(--text-3);
+        margin-left: auto;
       }
 
       .commit-message {
-        margin-top: 6px;
-        font-size: 14px;
+        font-size: 13px;
         color: var(--text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .empty-state {
         font-size: 13px;
-        color: var(--muted);
-        padding: 8px 4px;
+        color: var(--text-3);
+        padding: 16px 4px;
+        font-family: var(--mono);
       }
 
-      .tab-bar {
-        display: flex;
-        gap: 4px;
-        margin-top: 18px;
-        border-bottom: 1px solid var(--border);
-        padding-bottom: 0;
-      }
-
-      .tab-btn {
-        background: none;
-        border: none;
-        border-bottom: 2px solid transparent;
-        color: var(--muted);
-        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
-        font-size: 13px;
-        font-weight: 600;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        padding: 8px 16px 10px;
-        cursor: pointer;
-        transition: color 0.2s ease, border-color 0.2s ease;
-        margin-bottom: -1px;
-      }
-
-      .tab-btn:hover {
-        color: var(--text);
-      }
-
-      .tab-btn.active {
-        color: var(--accent);
-        border-bottom-color: var(--accent);
-      }
-
-      .digest-panel {
-        display: none;
-        margin-top: 20px;
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 24px 28px;
-        box-shadow: var(--shadow);
-        max-width: 860px;
-      }
-
-      .digest-panel.visible {
-        display: block;
-      }
-
-      .digest-generated {
-        font-size: 13px;
-        color: var(--muted);
-        margin-bottom: 20px;
-      }
-
-      .digest-content h1 {
-        font-size: 22px;
-        font-weight: 700;
-        color: var(--text);
-        margin: 0 0 6px;
-      }
-
-      .digest-content h2 {
-        font-size: 16px;
-        font-weight: 700;
-        color: var(--cyan);
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        margin: 24px 0 10px;
-        padding-bottom: 6px;
-        border-bottom: 1px solid var(--border);
-      }
-
-      .digest-content h3 {
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--blue);
-        margin: 14px 0 6px;
-      }
-
-      .digest-content ul {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-      }
-
-      .digest-content li {
-        font-size: 13px;
-        color: var(--text);
-        padding: 6px 10px;
-        background: var(--panel-2);
-        border-radius: 8px;
-        border: 1px solid rgba(30, 39, 52, 0.8);
-        font-family: "JetBrains Mono", monospace;
-      }
-
-      .digest-content li .digest-ok { color: var(--accent); }
-      .digest-content li .digest-warn { color: var(--warn); }
-      .digest-content li strong { color: var(--text); font-weight: 600; }
-      .digest-content em { color: var(--muted); font-style: italic; }
-
-      .digest-hint {
-        margin-top: 20px;
-        font-size: 12px;
-        color: var(--muted);
-        font-family: "JetBrains Mono", monospace;
-      }
-
-      @media (max-width: 980px) {
-        .main-grid { grid-template-columns: 1fr; }
-        .gz-featured-inner { grid-template-columns: 1fr !important; }
-        .gz-articles { column-count: 1 !important; }
-        .gz-body-grid { grid-template-columns: 1fr !important; }
-      }
-
-      /* ── The GitPal Gazette ───────────────────────────────── */
-      .digest-panel {
-        display: none;
-        margin-top: 20px;
-      }
+      /* ── Digest tab ── */
+      .digest-panel { display: none; }
       .digest-panel.visible { display: block; }
 
+      /* ── Gazette (newspaper style — intentional light theme) ── */
       .gazette {
-        background: #faf8f0;
-        color: #1a1a1a;
-        border-radius: 14px;
-        padding: 0;
+        background: #faf8f2;
+        color: #111;
+        border-radius: var(--radius);
         overflow: hidden;
-        box-shadow: 0 18px 50px rgba(4,10,18,0.4);
+        box-shadow: var(--shadow-lg);
+        border: 1px solid var(--border);
       }
 
       .gz-masthead {
         text-align: center;
-        padding: 28px 32px 0;
-        border-bottom: 3px double #1a1a1a;
+        padding: 24px 32px 0;
+        border-bottom: 3px double #111;
       }
-      .gz-masthead-rule { border: none; border-top: 1px solid #1a1a1a; margin: 0 0 6px; }
+
+      .gz-masthead-rule { border: none; border-top: 1px solid #111; margin: 0 0 6px; }
+
       .gz-title {
-        font-family: "Playfair Display", Georgia, "Times New Roman", serif;
-        font-size: 42px;
-        font-weight: 900;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
+        font-family: var(--serif);
+        font-size: 44px;
+        font-style: italic;
+        font-weight: 400;
+        letter-spacing: -0.01em;
         margin: 0;
-        line-height: 1.1;
+        line-height: 1;
+        color: #111;
       }
+
       .gz-dateline {
-        font-family: "IBM Plex Sans", sans-serif;
-        font-size: 11px;
+        font-family: var(--mono);
+        font-size: 10px;
         letter-spacing: 0.18em;
         text-transform: uppercase;
-        color: #666;
+        color: #777;
         padding: 8px 0 14px;
       }
 
       .gz-body-grid {
         display: grid;
-        grid-template-columns: 1fr 260px;
+        grid-template-columns: 1fr 240px;
         gap: 0;
       }
 
       .gz-main { padding: 24px 28px; }
 
-      /* Featured article */
       .gz-featured {
         margin-bottom: 20px;
         padding-bottom: 20px;
         border-bottom: 1px solid #ccc;
       }
+
       .gz-featured-headline {
-        font-family: "Playfair Display", Georgia, serif;
-        font-size: 30px;
-        font-weight: 700;
+        font-family: var(--serif);
+        font-size: 28px;
+        font-style: italic;
+        font-weight: 400;
         line-height: 1.2;
         margin: 0 0 14px;
-        color: #1a1a1a;
+        color: #111;
       }
+
       .gz-featured-inner {
         display: grid;
         grid-template-columns: 1.2fr 1fr;
         gap: 20px;
         align-items: start;
       }
-      .gz-featured-img {
-        width: 100%;
-        border-radius: 4px;
-        border: 1px solid #ddd;
-        display: block;
-      }
-      .gz-featured-text {}
-      .gz-featured-body {
-        font-family: Georgia, "Times New Roman", serif;
-        font-size: 15px;
-        line-height: 1.7;
-        margin: 0;
-        color: #333;
-      }
-      .gz-byline {
-        font-family: "IBM Plex Sans", sans-serif;
-        font-size: 11px;
-        color: #888;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        margin-top: 10px;
-      }
 
-      /* Article columns */
-      .gz-articles {
-        column-count: 2;
-        column-gap: 28px;
-        column-rule: 1px solid #ccc;
-      }
-      .gz-article {
-        break-inside: avoid;
-        margin-bottom: 20px;
-        padding-bottom: 16px;
-        border-bottom: 1px solid #e0ddd5;
-      }
-      .gz-article-headline {
-        font-family: "Playfair Display", Georgia, serif;
-        font-size: 18px;
-        font-weight: 700;
-        line-height: 1.25;
-        margin: 0 0 8px;
-        color: #1a1a1a;
-      }
-      .gz-article-img {
-        width: 100%;
-        border-radius: 3px;
-        border: 1px solid #ddd;
-        margin-bottom: 10px;
-        display: block;
-      }
-      .gz-article-body {
-        font-family: Georgia, "Times New Roman", serif;
-        font-size: 14px;
-        line-height: 1.65;
-        margin: 0;
-        color: #333;
-      }
+      .gz-featured-img { width: 100%; border-radius: 3px; border: 1px solid #ddd; display: block; }
+      .gz-featured-body { font-family: Georgia, serif; font-size: 14px; line-height: 1.7; color: #333; margin: 0; }
+      .gz-byline { font-family: var(--mono); font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 10px; }
 
-      /* Sidebar */
-      .gz-sidebar {
-        padding: 24px 20px;
-        border-left: 1px solid #ccc;
-        background: #f5f2e8;
-      }
-      .gz-sidebar-section {
-        margin-bottom: 20px;
-      }
-      .gz-sidebar-title {
-        font-family: "Playfair Display", Georgia, serif;
-        font-size: 14px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        border-bottom: 2px solid #1a1a1a;
-        padding-bottom: 4px;
-        margin: 0 0 10px;
-        color: #1a1a1a;
-      }
-      .gz-sidebar-item {
-        font-family: Georgia, serif;
-        font-size: 13px;
-        color: #444;
-        padding: 4px 0;
-        border-bottom: 1px solid #e5e0d5;
-      }
-      .gz-sidebar-item strong { color: #1a1a1a; }
-      .gz-sidebar-stat {
-        font-family: "IBM Plex Sans", sans-serif;
-        font-size: 12px;
-        color: #666;
-        padding: 4px 0;
-      }
+      .gz-articles { column-count: 2; column-gap: 28px; column-rule: 1px solid #ccc; }
+
+      .gz-article { break-inside: avoid; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #e0ddd5; }
+
+      .gz-article-headline { font-family: var(--serif); font-size: 17px; font-style: italic; font-weight: 400; line-height: 1.25; margin: 0 0 8px; color: #111; }
+
+      .gz-article-img { width: 100%; border-radius: 2px; border: 1px solid #ddd; margin-bottom: 10px; display: block; }
+
+      .gz-article-body { font-family: Georgia, serif; font-size: 13px; line-height: 1.65; color: #333; margin: 0; }
+
+      .gz-sidebar { padding: 24px 18px; border-left: 1px solid #ccc; background: #f3f0e6; }
+
+      .gz-sidebar-section { margin-bottom: 20px; }
+
+      .gz-sidebar-title { font-family: var(--mono); font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 2px solid #111; padding-bottom: 4px; margin: 0 0 10px; color: #111; }
+
+      .gz-sidebar-item { font-family: Georgia, serif; font-size: 12px; color: #444; padding: 4px 0; border-bottom: 1px solid #e5e0d5; }
+      .gz-sidebar-item strong { color: #111; }
+
+      .gz-sidebar-stat { font-family: var(--mono); font-size: 11px; color: #666; padding: 4px 0; }
       .gz-sidebar-ok { color: #2e7d32; }
       .gz-sidebar-warn { color: #c77700; }
 
-      /* Footer */
-      .gz-footer {
-        text-align: center;
-        padding: 12px 28px;
-        font-family: Georgia, serif;
-        font-size: 12px;
-        font-style: italic;
-        color: #999;
-        border-top: 1px solid #ccc;
-        background: #f5f2e8;
-      }
-      .gz-footer code {
-        font-family: "JetBrains Mono", monospace;
-        font-size: 11px;
-        font-style: normal;
-        background: #e8e4d8;
-        padding: 1px 5px;
-        border-radius: 3px;
-      }
+      .gz-footer { text-align: center; padding: 12px 28px; font-family: Georgia, serif; font-size: 11px; font-style: italic; color: #999; border-top: 1px solid #ccc; background: #f3f0e6; }
+      .gz-footer code { font-family: var(--mono); font-size: 10px; font-style: normal; background: #e8e4d8; padding: 1px 5px; border-radius: 3px; }
 
-      .gz-empty {
-        text-align: center;
-        padding: 60px 28px;
-        font-family: Georgia, serif;
-        font-size: 16px;
-        color: #888;
-      }
-      .gz-empty code {
-        font-family: "JetBrains Mono", monospace;
-        font-size: 13px;
-        background: #e8e4d8;
-        padding: 2px 6px;
-        border-radius: 3px;
+      .gz-empty { text-align: center; padding: 60px 28px; font-family: Georgia, serif; font-size: 15px; color: #888; }
+      .gz-empty code { font-family: var(--mono); font-size: 12px; background: #e8e4d8; padding: 2px 6px; border-radius: 3px; }
+
+      /* ── Responsive ── */
+      @media (max-width: 900px) {
+        .main-grid { grid-template-columns: 1fr; }
+        .gz-featured-inner { grid-template-columns: 1fr; }
+        .gz-articles { column-count: 1; }
+        .gz-body-grid { grid-template-columns: 1fr; }
       }
     </style>
   </head>
   <body>
     <div class="app">
       <header class="header">
-        <div class="brand">GitPal</div>
-        <div class="header-meta">
-          <div class="refresh-status">
-            <span id="refresh-indicator" class="refresh-indicator"></span>
-            <span id="last-refreshed">Last refresh: --:--:--</span>
+        <div class="brand">
+          <div class="brand-icon">⬡</div>
+          <span class="brand-name">GitPal</span>
+          <span class="brand-tag">v2</span>
+        </div>
+        <div class="header-right">
+          <div class="status-pill">
+            <span id="pulse-dot" class="pulse-dot"></span>
+            <span id="last-refreshed">--:--:--</span>
           </div>
           <button class="btn" id="refresh-btn" type="button">Refresh</button>
         </div>
       </header>
 
-      <nav class="tab-bar">
+      <nav class="nav">
         <button class="tab-btn active" id="tab-dashboard" type="button">Dashboard</button>
         <button class="tab-btn" id="tab-digest" type="button">Digest</button>
       </nav>
 
       <main class="main-grid">
-        <section class="panel">
-          <div class="panel-header">
-            <div class="panel-title">Doctor</div>
-          </div>
-          <div class="doctor-list" id="doctor-list"></div>
-        </section>
-
-        <section class="right-column">
+        <aside>
           <div class="panel">
-            <div class="panel-header">
-              <div class="panel-title">Projects</div>
-              <div class="project-meta"><strong id="projects-count">0</strong> tracked</div>
+            <div class="panel-head">
+              <span class="panel-title">System</span>
+            </div>
+            <div class="doctor-list" id="doctor-list"></div>
+          </div>
+        </aside>
+
+        <div class="right-col">
+          <div class="panel">
+            <div class="panel-head">
+              <span class="panel-title">Projects</span>
+              <span class="panel-badge" id="projects-count">0</span>
             </div>
             <div class="projects-list" id="projects-list"></div>
           </div>
 
           <div class="panel">
-            <div class="panel-header">
-              <div class="panel-title">Commit Feed</div>
+            <div class="panel-head">
+              <span class="panel-title">Commit Feed</span>
             </div>
             <div class="commit-feed" id="commit-feed"></div>
           </div>
-        </section>
+        </div>
       </main>
 
       <div class="digest-panel" id="digest-panel">
@@ -790,7 +743,7 @@
     </div>
 
     <script>
-      const refreshIndicator = document.getElementById("refresh-indicator");
+      const pulseDot = document.getElementById("pulse-dot");
       const lastRefreshed = document.getElementById("last-refreshed");
       const refreshButton = document.getElementById("refresh-btn");
       const doctorList = document.getElementById("doctor-list");
@@ -803,12 +756,11 @@
 
       function setLoading() {
         const active = projectsLoading || doctorLoading;
-        refreshIndicator.classList.toggle("is-loading", active);
+        pulseDot.classList.toggle("active", active);
       }
 
       function updateLastRefreshed() {
-        const now = new Date();
-        lastRefreshed.textContent = `Last refresh: ${now.toLocaleTimeString()}`;
+        lastRefreshed.textContent = new Date().toLocaleTimeString();
       }
 
       function createElement(tag, className, text) {
@@ -827,19 +779,17 @@
       function renderDoctor(items) {
         doctorList.replaceChildren();
         if (!items.length) {
-          doctorList.appendChild(createElement("div", "empty-state", "No health checks yet."));
+          doctorList.appendChild(createElement("div", "empty-state", "No health checks."));
           return;
         }
-
         for (const item of items) {
           const row = createElement("div", "doctor-item");
-          const labelWrap = createElement("div", "doctor-label");
+          const left = createElement("div", "doctor-left");
           const dot = createElement("span", `status-dot status-${item.status}`);
           const label = createElement("span", null, item.label);
-          labelWrap.append(dot, label);
-
+          left.append(dot, label);
           const detail = createElement("span", "doctor-detail", item.detail);
-          row.append(labelWrap, detail);
+          row.append(left, detail);
           doctorList.appendChild(row);
         }
       }
@@ -847,27 +797,18 @@
       function renderProjects(projects) {
         projectsList.replaceChildren();
         projectsCount.textContent = String(projects.length);
-
         if (!projects.length) {
           projectsList.appendChild(createElement("div", "empty-state", "No Git repositories found."));
           return;
         }
-
         for (const project of projects) {
           const card = createElement("div", "project-card");
-          const top = createElement("div", "project-top");
-          const nameWrap = createElement("div", null);
-          const name = createElement("div", "project-name", project.name);
-          nameWrap.appendChild(name);
 
+          const top = createElement("div", "project-top");
+          const name = createElement("div", "project-name", project.name);
           const link = document.createElement("a");
           link.className = "project-link";
-          link.innerHTML = `
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 1 0-7.07-7.07L10 5" />
-              <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 1 0 7.07 7.07L14 19" />
-            </svg>
-          `;
+          link.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 1 0-7.07-7.07L10 5"/><path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 1 0 7.07 7.07L14 19"/></svg>`;
           if (project.hasRemote && project.remoteUrl) {
             link.href = project.remoteUrl;
             link.target = "_blank";
@@ -875,24 +816,22 @@
           } else {
             link.classList.add("disabled");
           }
+          top.append(name, link);
 
-          top.append(nameWrap, link);
+          const commit = createElement("div", "project-commit");
+          const msg = project.lastCommit?.message || "No commits yet";
+          const rel = project.lastCommit?.relativeDate || "";
+          commit.innerHTML = `<strong>${esc(msg)}</strong>${rel ? `<span style="color:var(--text-3);font-size:11px">${esc(rel)}</span>` : ""}`;
 
-          const meta = createElement("div", "project-meta");
-          const message = project.lastCommit?.message || "No commits yet";
-          const relative = project.lastCommit?.relativeDate || "";
-          meta.innerHTML = `<strong>${message}</strong>${relative ? ` · ${relative}` : ""}`;
-
-          const statusRow = createElement("div", "project-status");
+          const footer = createElement("div", "project-footer");
           const badge = createElement("span", `badge ${project.dirty ? "dirty" : "clean"}`);
-          badge.textContent = project.dirty ? `● ${project.changedFiles} changes` : "clean";
+          badge.textContent = project.dirty ? `${project.changedFiles} changes` : "clean";
 
           const watcher = createElement("span", "watcher");
-          const watcherDot = createElement("span", `watcher-dot ${project.watcherRunning ? "running" : "stopped"}`);
-          const watcherLabel = createElement("span", null, project.watcherRunning ? "watcher on" : "watcher off");
-          watcher.append(watcherDot, watcherLabel);
-
-          statusRow.append(badge, watcher);
+          const wDot = createElement("span", `watcher-dot ${project.watcherRunning ? "running" : "stopped"}`);
+          const wLabel = createElement("span", null, project.watcherRunning ? "watching" : "idle");
+          watcher.append(wDot, wLabel);
+          footer.append(badge, watcher);
 
           const actions = createElement("div", "actions");
           ["push", "sync", "undo"].forEach((action) => {
@@ -900,15 +839,14 @@
             btn.type = "button";
             btn.dataset.action = action;
             btn.dataset.project = project.name;
-
-            const label = createElement("span", null, action.charAt(0).toUpperCase() + action.slice(1));
+            const label = createElement("span", null, action);
             const spinner = createElement("span", "spinner");
             const status = createElement("span", "btn-status");
             btn.append(label, spinner, status);
             actions.appendChild(btn);
           });
 
-          card.append(top, meta, statusRow, actions);
+          card.append(top, commit, footer, actions);
           projectsList.appendChild(card);
         }
       }
@@ -919,77 +857,63 @@
           commitFeed.appendChild(createElement("div", "empty-state", "No recent commits."));
           return;
         }
-
         for (const entry of entries) {
           const item = createElement("div", "commit-entry");
+          const left = createElement("div", "commit-left");
           const dot = createElement("div", "commit-dot");
-          const content = createElement("div", "commit-content");
-          const top = createElement("div", "commit-top");
+          const line = createElement("div", "commit-line");
+          left.append(dot, line);
 
+          const body = createElement("div", "commit-body");
+          const meta = createElement("div", "commit-meta");
           const chip = createElement("span", "project-chip", entry.project);
           const hash = createElement("span", "commit-hash", entry.shortHash || entry.hash || "");
-          const date = createElement("span", null, entry.relativeDate || "");
-          top.append(chip, hash, date);
+          const date = createElement("span", "commit-date", entry.relativeDate || "");
+          meta.append(chip, hash, date);
 
           const message = createElement("div", "commit-message", entry.message || "");
-          content.append(top, message);
-          item.append(dot, content);
+          body.append(meta, message);
+          item.append(left, body);
           commitFeed.appendChild(item);
         }
       }
 
       async function refreshDoctor() {
-        doctorLoading = true;
-        setLoading();
+        doctorLoading = true; setLoading();
         try {
-          const items = await fetchJson("/api/doctor");
-          renderDoctor(items);
-        } catch {
-          renderDoctor([]);
-        } finally {
-          doctorLoading = false;
-          setLoading();
-        }
+          renderDoctor(await fetchJson("/api/doctor"));
+        } catch { renderDoctor([]); }
+        finally { doctorLoading = false; setLoading(); }
       }
 
       async function refreshProjectsAndCommits() {
         if (projectsLoading) return;
-        projectsLoading = true;
-        setLoading();
+        projectsLoading = true; setLoading();
         try {
           const projects = await fetchJson("/api/projects");
           renderProjects(projects);
-
           const commitResponses = await Promise.all(
-            projects.map((project) =>
-              fetchJson(`/api/commits?project=${encodeURIComponent(project.name)}&n=5`)
-                .then((commits) => commits.map((commit) => ({ ...commit, project: project.name })))
+            projects.map((p) =>
+              fetchJson(`/api/commits?project=${encodeURIComponent(p.name)}&n=5`)
+                .then((commits) => commits.map((c) => ({ ...c, project: p.name })))
                 .catch(() => [])
             )
           );
-
           const merged = commitResponses.flat();
           merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
           renderCommitFeed(merged);
           updateLastRefreshed();
-        } catch {
-          renderProjects([]);
-          renderCommitFeed([]);
-        } finally {
-          projectsLoading = false;
-          setLoading();
-        }
+        } catch { renderProjects([]); renderCommitFeed([]); }
+        finally { projectsLoading = false; setLoading(); }
       }
 
       async function handleAction(button) {
         const action = button.dataset.action;
         const project = button.dataset.project;
         if (!action || !project) return;
-
         button.classList.add("loading");
         button.disabled = true;
         const status = button.querySelector(".btn-status");
-
         try {
           const response = await fetch("/api/action", {
             method: "POST",
@@ -1004,18 +928,15 @@
           status.textContent = "✗";
           status.className = "btn-status fail";
         } finally {
-          setTimeout(() => {
-            status.textContent = "";
-            status.className = "btn-status";
-          }, 1400);
+          setTimeout(() => { status.textContent = ""; status.className = "btn-status"; }, 1400);
           button.classList.remove("loading");
           button.disabled = false;
           setTimeout(refreshProjectsAndCommits, 900);
         }
       }
 
-      projectsList.addEventListener("click", (event) => {
-        const target = event.target.closest("button[data-action]");
+      projectsList.addEventListener("click", (e) => {
+        const target = e.target.closest("button[data-action]");
         if (target) handleAction(target);
       });
 
@@ -1024,18 +945,11 @@
         refreshDoctor();
       });
 
-      refreshProjectsAndCommits();
-      refreshDoctor();
-      setInterval(refreshProjectsAndCommits, 15000);
-      setInterval(refreshDoctor, 30000);
-
-      // --- Tab switching ---
+      // Tab switching
       const tabDashboard = document.getElementById("tab-dashboard");
       const tabDigest = document.getElementById("tab-digest");
       const mainGrid = document.querySelector(".main-grid");
       const digestPanel = document.getElementById("digest-panel");
-      const digestGenerated = document.getElementById("digest-generated");
-      const digestContent = document.getElementById("digest-content");
 
       function showTab(name) {
         const isDashboard = name === "dashboard";
@@ -1049,21 +963,24 @@
       tabDashboard.addEventListener("click", () => showTab("dashboard"));
       tabDigest.addEventListener("click", () => showTab("digest"));
 
-      // --- The GitPal Gazette ---
+      // Gazette
+      function esc(s) {
+        if (!s) return "";
+        return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+      }
+
       function renderGazette(data) {
         const root = document.getElementById("gazette-root");
         if (!root) return;
 
-        // Legacy markdown format
         if (data.content && !data.articles) {
           root.innerHTML = '<div class="gz-empty">Run <code>gp digest</code> to generate The GitPal Gazette.</div>';
           return;
         }
 
         if (!data.articles || data.articles.length === 0) {
-          const hasHealth = data.health;
-          if (!hasHealth && !data.uncommitted) {
-            root.innerHTML = '<div class="gz-empty">No edition published yet. Run <code>gp digest</code> to print the first issue.</div>';
+          if (!data.health && !data.uncommitted) {
+            root.innerHTML = '<div class="gz-empty">No edition yet. Run <code>gp digest</code> to print the first issue.</div>';
             return;
           }
         }
@@ -1072,121 +989,102 @@
         const others = data.articles.filter(a => a !== featured);
 
         let html = '<div class="gazette">';
-
-        // Masthead
         html += '<div class="gz-masthead">';
         html += '<hr class="gz-masthead-rule">';
-        html += '<h1 class="gz-title">' + esc(data.name || 'The GitPal Gazette') + '</h1>';
-        const vol = 'Vol. I';
-        const dateUp = (data.date || '').toUpperCase();
-        const edUp = (data.edition || '').toUpperCase();
-        html += '<div class="gz-dateline">' + vol + ' &middot; ' + esc(dateUp) + ' &middot; ' + esc(edUp) + '</div>';
-        html += '</div>';
+        html += '<h1 class="gz-title">' + esc(data.name || "The GitPal Gazette") + "</h1>";
+        html += '<div class="gz-dateline">Vol. I &middot; ' + esc((data.date || "").toUpperCase()) + " &middot; " + esc((data.edition || "").toUpperCase()) + "</div>";
+        html += "</div>";
 
-        html += '<div class="gz-body-grid">';
-        html += '<div class="gz-main">';
+        html += '<div class="gz-body-grid"><div class="gz-main">';
 
-        // Featured article
         if (featured) {
           html += '<div class="gz-featured">';
-          html += '<h2 class="gz-featured-headline">' + esc(featured.headline) + '</h2>';
+          html += '<h2 class="gz-featured-headline">' + esc(featured.headline) + "</h2>";
           html += '<div class="gz-featured-inner">';
           if (featured.screenshot) {
             html += '<img class="gz-featured-img" src="/screenshots/' + esc(featured.screenshot) + '" alt="' + esc(featured.project) + '" onerror="this.style.display=\'none\'">';
           }
           html += '<div class="gz-featured-text">';
-          html += '<p class="gz-featured-body">' + esc(featured.body) + '</p>';
-          html += '<div class="gz-byline">' + esc(featured.project) + ' &middot; ' + featured.commits + ' commit(s) &middot; +' + featured.linesAdded + ' -' + featured.linesRemoved + '</div>';
-          html += '</div></div></div>';
+          html += '<p class="gz-featured-body">' + esc(featured.body) + "</p>";
+          html += '<div class="gz-byline">' + esc(featured.project) + " &middot; " + featured.commits + " commit(s) &middot; +" + featured.linesAdded + " -" + featured.linesRemoved + "</div>";
+          html += "</div></div></div>";
         }
 
-        // Article columns
         if (others.length > 0) {
           html += '<div class="gz-articles">';
-          for (const article of others) {
+          for (const a of others) {
             html += '<div class="gz-article">';
-            html += '<h3 class="gz-article-headline">' + esc(article.headline) + '</h3>';
-            if (article.screenshot) {
-              html += '<img class="gz-article-img" src="/screenshots/' + esc(article.screenshot) + '" alt="' + esc(article.project) + '" onerror="this.style.display=\'none\'">';
+            html += '<h3 class="gz-article-headline">' + esc(a.headline) + "</h3>";
+            if (a.screenshot) {
+              html += '<img class="gz-article-img" src="/screenshots/' + esc(a.screenshot) + '" alt="' + esc(a.project) + '" onerror="this.style.display=\'none\'">';
             }
-            html += '<p class="gz-article-body">' + esc(article.body) + '</p>';
-            html += '<div class="gz-byline">' + esc(article.project) + ' &middot; ' + article.commits + ' commit(s) &middot; +' + article.linesAdded + ' -' + article.linesRemoved + '</div>';
-            html += '</div>';
+            html += '<p class="gz-article-body">' + esc(a.body) + "</p>";
+            html += '<div class="gz-byline">' + esc(a.project) + " &middot; " + a.commits + " commit(s) &middot; +" + a.linesAdded + " -" + a.linesRemoved + "</div>";
+            html += "</div>";
           }
-          html += '</div>';
+          html += "</div>";
         }
 
-        html += '</div>'; // gz-main
+        html += "</div>";
 
-        // Sidebar
         html += '<div class="gz-sidebar">';
-
-        // Uncommitted work
         html += '<div class="gz-sidebar-section">';
         html += '<div class="gz-sidebar-title">On the Editor\'s Desk</div>';
         if (data.uncommitted && data.uncommitted.length > 0) {
           for (const u of data.uncommitted) {
-            html += '<div class="gz-sidebar-item"><strong>' + esc(u.name) + '</strong> — ' + u.changes + ' file(s)</div>';
+            html += '<div class="gz-sidebar-item"><strong>' + esc(u.name) + "</strong> — " + u.changes + " file(s)</div>";
           }
         } else {
-          html += '<div class="gz-sidebar-item" style="color:#888;font-style:italic">All clear — nothing uncommitted.</div>';
+          html += '<div class="gz-sidebar-item" style="color:#888;font-style:italic">All clear.</div>';
         }
-        html += '</div>';
+        html += "</div>";
 
-        // Infrastructure
         html += '<div class="gz-sidebar-section">';
-        html += '<div class="gz-sidebar-title">Infrastructure Report</div>';
+        html += '<div class="gz-sidebar-title">Infrastructure</div>';
         if (data.health) {
           const c = data.health.containers;
           if (c.unhealthy > 0) {
-            html += '<div class="gz-sidebar-stat gz-sidebar-warn">' + c.unhealthy + ' unhealthy of ' + c.total + ' containers</div>';
+            html += '<div class="gz-sidebar-stat gz-sidebar-warn">' + c.unhealthy + " unhealthy / " + c.total + " containers</div>";
             for (const name of (c.names || [])) {
-              html += '<div class="gz-sidebar-item">' + esc(name) + '</div>';
+              html += '<div class="gz-sidebar-item">' + esc(name) + "</div>";
             }
           } else {
-            html += '<div class="gz-sidebar-stat gz-sidebar-ok">' + c.total + ' containers — all healthy</div>';
+            html += '<div class="gz-sidebar-stat gz-sidebar-ok">' + c.total + " containers healthy</div>";
           }
           const d = data.health.disk;
           if (d) {
-            const dClass = d.percent >= 90 ? 'gz-sidebar-warn' : '';
-            html += '<div class="gz-sidebar-stat ' + dClass + '">Disk: ' + esc(d.text) + '</div>';
+            html += '<div class="gz-sidebar-stat ' + (d.percent >= 90 ? "gz-sidebar-warn" : "") + '">Disk: ' + esc(d.text) + "</div>";
           }
         }
-        html += '</div>';
+        html += "</div>";
 
-        // Stats
         if (data.totalCommits) {
           html += '<div class="gz-sidebar-section">';
           html += '<div class="gz-sidebar-title">By the Numbers</div>';
-          html += '<div class="gz-sidebar-stat">' + data.totalCommits + ' commits across ' + data.totalProjects + ' projects</div>';
-          html += '</div>';
+          html += '<div class="gz-sidebar-stat">' + data.totalCommits + " commits / " + data.totalProjects + " projects</div>";
+          html += "</div>";
         }
 
-        html += '</div>'; // gz-sidebar
-        html += '</div>'; // gz-body-grid
-
-        // Footer
-        html += '<div class="gz-footer">Generated at ' + esc(data.generated || '') + ' &middot; Run <code>gp digest</code> to refresh</div>';
-
-        html += '</div>'; // gazette
+        html += "</div></div>";
+        html += '<div class="gz-footer">Generated ' + esc(data.generated || "") + ' &middot; Run <code>gp digest</code> to refresh</div>';
+        html += "</div>";
         root.innerHTML = html;
-      }
-
-      function esc(s) {
-        if (!s) return '';
-        return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
       }
 
       async function refreshDigest() {
         try {
-          const data = await fetchJson("/api/digest");
-          renderGazette(data);
+          renderGazette(await fetchJson("/api/digest"));
         } catch {
           const root = document.getElementById("gazette-root");
           if (root) root.innerHTML = '<div class="gz-empty">Could not load the Gazette.</div>';
         }
       }
 
+      // Boot
+      refreshProjectsAndCommits();
+      refreshDoctor();
+      setInterval(refreshProjectsAndCommits, 15000);
+      setInterval(refreshDoctor, 30000);
       setInterval(() => {
         if (digestPanel.classList.contains("visible")) refreshDigest();
       }, 300000);
