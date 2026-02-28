@@ -1065,7 +1065,7 @@
         const date = currentDate || todayStr;
         const pdfs = archivePdfs[date] || [];
         if (!pdfs.includes(currentEdition)) { pdfBtn.style.display = 'none'; return; }
-        const url = `/api/digest/pdf?date=${encodeURIComponent(date)}&edition=${encodeURIComponent(currentEdition)}`;
+        const url = `/api/digest/pdf?date=${encodeURIComponent(date)}&edition=${encodeURIComponent(currentEdition)}&t=${Date.now()}`;
         pdfBtn.href = url;
         pdfBtn.style.display = '';
       }

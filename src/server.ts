@@ -337,7 +337,7 @@ async function handleRequest(req: Request): Promise<Response> {
     return new Response(file, { headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="${filename}"`,
-      "Cache-Control": "public, max-age=86400",
+      "Cache-Control": "no-cache, no-store, must-revalidate",
     }});
   }
 
