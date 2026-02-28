@@ -135,19 +135,21 @@ docker-compose up -d
 
 ### Git API
 - `git status`/`git diff`/`git log`: Core Git operations
-- `git add`/`git commit`: Auto-commit workflow
-- `git push`: Remote repository synchronization
+- `g
 
 ---
 
 ## Environment Variables
 
 | Variable              | Description                                                                 | Required |
-|-----------------------|-----------------------------------------------------------------------------|----------|
-| `OLLAMA_MODEL`        | AI model for commit messages                                               | false    |
-| `OLLAMA_URL`          | URL for Ollama service                                                     | false    |
-| `GITHUB_USERNAME`     | GitHub username for repo creation                                         | false    |
-| `AUTO_PUSH`           | Enable auto-push after commits                                            | false    |
-| `WATCH_PATTERNS`      | Directories to monitor                                                    | false    |
-| `EXCLUDE_PATTERNS`    | Files/dirs to exclude from monitoring                                    | false    |
-| `IDLE_SECONDS`        | Seconds of inactivity before auto-commit                                 | false    |
+|----------------------|-----------------------------------------------------------------------------|----------|
+| `WATCH_PATTERNS`     | Comma-separated list of directories to watch                                | false    |
+| `EXCLUDE_PATTERNS`   | Comma-separated list of directories to exclude from watching               | false    |
+| `IDLE_SECONDS`       | Seconds of inactivity before auto-committing                               | false    |
+| `OLLAMA_MODEL`       | Ollama model to use for AI commit messages                                 | false    |
+| `OLLAMA_URL`         | URL of Ollama server                                                       | false    |
+| `OPENAI_API_KEY`     | OpenAI API key for AI commit messages                                     | false    |
+| `OPENAI_MODEL`       | OpenAI model to use for AI commit messages                                | false    |
+| `AI_PROVIDER`        | AI provider (openai/ollama)                                               | false    |
+| `GITHUB_USERNAME`    | GitHub username for repo creation and deployment                          | false    |
+| `AUTO_PUSH`          | Automatically push changes to remote                                       | false    |
