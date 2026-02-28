@@ -213,20 +213,6 @@ async function getDoctorItems(): Promise<DoctorItem[]> {
     items.push({ label: "Memory", status: "fail", detail: memResult.stderr.toString().trim() || "free failed" });
   }
 
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1500);
-    const response = await fetch("http://localhost:11434", { signal: controller.signal });
-    clearTimeout(timeout);
-    items.push({
-      label: "Ollama",
-      status: response.ok ? "pass" : "fail",
-      detail: response.ok ? "responding" : `status ${response.status}`,
-    });
-  } catch (err) {
-    items.push({ label: "Ollama", status: "fail", detail: err instanceof Error ? err.message : "unreachable" });
-  }
-
   const dockerResult = await Bun.$`docker ps`.quiet().nothrow();
   if (dockerResult.exitCode === 0) {
     const lines = dockerResult.stdout.toString().trim().split("\n").filter(Boolean);
