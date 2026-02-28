@@ -63,6 +63,21 @@ GitPal is an automated Git workflow tool designed for developers who want to sim
 - **Auto-deploy Support:**
   - Detects Docker Compose or custom `deploy.sh` scripts to rebuild/restart services after push.
 
+- **MCP Server (AI Assistant Integration):**
+  - Built-in MCP (Model Context Protocol) server via `gp mcp`.
+  - Exposes all GitPal commands as tools for Claude Code, OpenCode, Claude Desktop, or any MCP client.
+  - Add to your MCP config:
+  ```json
+  {
+    "mcpServers": {
+      "gitpal": {
+        "command": "gp",
+        "args": ["mcp"]
+      }
+    }
+  }
+  ```
+
 ---
 
 ## Tech Stack

@@ -28,6 +28,7 @@ import { runOpen } from "./commands/open.ts";
 import { runDiff } from "./commands/diff.ts";
 import { runRecent } from "./commands/recent.ts";
 import { runClean } from "./commands/clean.ts";
+import { runMcp } from "./mcp.ts";
 
 const [, , cmd, ...args] = process.argv;
 
@@ -166,6 +167,10 @@ async function main(): Promise<void> {
       await runSync(process.cwd());
       break;
 
+    case "mcp":
+      await runMcp();
+      break;
+
     case "serve": {
       const pidFile = join(homedir(), ".gitpal", "sessions", "gp-server.pid");
       let running = false;
@@ -230,6 +235,7 @@ async function main(): Promise<void> {
       console.log("  gp init                          Connect project to GitHub");
       console.log("  gp setup                         First-time setup");
       console.log("  gp watch projects                Watch ~/projects for new folders");
+      console.log("  gp mcp                           Start MCP server for AI assistants");
       console.log("");
       break;
   }
