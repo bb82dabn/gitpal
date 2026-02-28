@@ -97,8 +97,12 @@ async function isPidRunning(pid: number): Promise<boolean> {
   return result.exitCode === 0;
 }
 
-async function isWatcherRunning(projectName: string): Promise<boolean> {
-  const pidFile = join(SESSIONS_DIR, `${projectName}.pid`);
+function slugify(dir: string): string {
+  return dir.replace(/[^a-zA-Z0-9]/g, "_").replace(/_+/g, "_").slice(-40);
+}
+
+async function isWatcherRunning(projectDir: string): Promise<boolean> {
+  const pidFile = join(SESSIONS_DIR, `${slugify(projectDir)}.pid`);
   if (!existsSync(pidFile)) return false;
   const raw = await Bun.file(pidFile).text();
   const pid = parseInt(raw.trim(), 10);
@@ -140,7 +144,7 @@ async function listProjects(): Promise<ProjectSummary[]> {
       const lastCommit = commits[0];
       const remoteExists = await hasRemote(fullPath);
       const remoteUrl = remoteExists ? await getRemoteUrl(fullPath) : "";
-      const watcherRunning = await isWatcherRunning(entry);
+      const watcherRunning = await isWatcherRunning(fullPath);
       const changedFiles = status.staged + status.unstaged + status.untracked;
 
       projects.push({
