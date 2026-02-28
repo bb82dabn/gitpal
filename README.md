@@ -111,18 +111,92 @@ Stored in `~/.gitpal/config.json`:
     gitpal.log         watcher activity log
 ```
 
-Each project gets a `.gp/` directory with `context.md` (project cheat sheet) and `commit-history.md`.
+Each part of the system works together to provide automated version control and project monitoring.
 
-## Requirements
+## Tech Stack
 
-- [Bun](https://bun.sh) v1.3+
-- Git
-- [GitHub CLI](https://cli.github.com/) (`gh`)
-- Google Chrome (for screenshots)
-- OpenAI API key or [Ollama](https://ollama.ai) (for AI features)
-- Docker (optional, for container health monitoring)
-- Linux with systemd (for auto-start services)
+| Technology | Role |
+|-----------|------|
+| **Bun** | Runtime environment and build tool |
+| **TypeScript** | Primary programming language |
+| **Chokidar** | File system watcher for change detection |
+| **Inquirer** | Interactive prompts for user input |
+| **Chalk** | Terminal styling and color output |
+| **SQLite** | Local database for storing configuration |
+| **Redis** | In-memory data store for caching |
+| **PostgreSQL** | Relational database for persistent storage |
+| **React** | Frontend framework for the web dashboard |
+| **Tailwind CSS** | Utility-first CSS framework for styling |
+| **Docker** | Containerization for deployment |
 
-## License
+## Prerequisites
 
-MIT
+- **Bun** 1.0.0+ (https://bun.sh/)
+- **Node.js** 18+ (for Docker and other dependencies)
+- **npm** 8+ (for package management)
+- **git** (for version control)
+- **docker** (for containerized services)
+- **docker-compose** (for orchestration)
+- **OpenAI API key** (for AI commit messages)
+- **Ollama** (for local AI model running)
+
+## Installation & Setup
+
+```bash
+# Install Bun if you don't have it
+curl -fsSL https://bun.sh/install | bash
+
+# Clone and install
+git clone https://github.com/bb82dabn/gitpal.git
+cd gitpal
+bun install
+bun run install-bin
+```
+
+This installs the CLI tools, sets up the configuration directory, and configures shell integration.
+
+## Running
+
+### Development
+```bash
+bun run start
+```
+
+### Production
+```bash
+bun build
+```
+
+## Docker
+
+```bash
+# Start services
+docker-compose up -d
+
+# Stop services
+docker-compose down
+```
+
+## API Overview
+
+| Route Group | Description |
+|------------|-------------|
+| `/` | Web dashboard UI |
+| `/api/projects` | Project management endpoints |
+| `/api/health` | System health checks |
+| `/api/digest` | Gazette article endpoints |
+| `/api/commit` | Commit history and diffs |
+| `/api/screenshot` | Project screenshot endpoints |
+
+## Environment Variables
+
+| Variable | Description | Required |
+|---------|-------------|----------|
+| `OPENAI_API_KEY` | OpenAI API key for AI commit messages | ✅ |
+| `OLLAMA_URL` | URL of running Ollama server | ✅ |
+| `GITPAL_CONFIG_DIR` | Custom configuration directory | ❌ |
+| `GITPAL_LOG_DIR` | Custom log directory | ❌ |
+| `GITPAL_SCREENSHOTS_DIR` | Custom screenshot directory | ❌ |
+| `GITPAL_IDLE_SECONDS` | Auto-commit idle time in seconds | ❌ |
+| `GITPAL_AUTO_PUSH` | Enable automatic GitHub pushes | ❌ |
+| `GITPAL_WATCH_PATTERNS` | Additional directories to watch | ❌ |

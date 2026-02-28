@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, statSync, readFileSync, writeFileSync } from "node:fs";
 import { join, extname, basename } from "node:path";
-import { loadConfig } from "./config.ts";
+import { aiComplete } from "./ai.ts";
 
 const MAX_FILE_CHARS = 4000;
 const MAX_FILES_SAMPLED = 20;
@@ -204,36 +204,13 @@ function buildPrompt(ctx: ProjectContext): string {
 }
 
 export async function generateReadme(dir: string): Promise<string | null> {
-  const config = await loadConfig();
   const ctx = gatherContext(dir);
   const prompt = buildPrompt(ctx);
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 120_000);
-
-    const response = await fetch(`${config.ollama_url}/api/generate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: config.ollama_model,
-        prompt,
-        stream: false,
-        options: {
-          temperature: 0.3,
-          num_predict: 3000,
-        },
-      }),
-    });
-
-    clearTimeout(timeout);
-
-    if (!response.ok) return buildFallbackReadme(ctx);
-
-    const data = await response.json() as { response?: string };
-    const content = (data.response ?? "").trim();
-    return content.length > 100 ? content : buildFallbackReadme(ctx);
+    const result = await aiComplete(prompt, 3000);
+    if (!result || result.length < 100) return buildFallbackReadme(ctx);
+    return result.trim();
   } catch {
     return buildFallbackReadme(ctx);
   }
@@ -368,7 +345,6 @@ function detectHomepage(dir: string): string {
 }
 
 export async function generateRepoMeta(dir: string): Promise<RepoMeta> {
-  const config = await loadConfig();
   const ctx = gatherContext(dir);
   const detectedTopics = detectTopicsFromPackage(dir);
   const homepage = detectHomepage(dir);
@@ -385,7 +361,8 @@ export async function generateRepoMeta(dir: string): Promise<RepoMeta> {
     '  { "description": string, "topics": string[] }',
     "",
     "Rules:",
-    "- description: ONE sentence (max 120 chars). What the project does and who/what it's for. Specific, no fluff.",
+    "- description: ONE sentence (max 120 chars). What the project does, specifically. No generic filler like 'built with X'.",
+    "- description must explain the PURPOSE of the project, not just its tech stack.",
     "- topics: 3-8 lowercase hyphenated tags relevant to the tech and domain (e.g. nextjs, docker, maps, news-aggregator)",
     "- Output ONLY the raw JSON object. No markdown, no explanation.",
     "",
@@ -397,46 +374,35 @@ export async function generateRepoMeta(dir: string): Promise<RepoMeta> {
   ].join("\n");
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60_000);
-    const response = await fetch(`${config.ollama_url}/api/generate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: config.ollama_model,
-        prompt,
-        stream: false,
-        options: { temperature: 0.2, num_predict: 200 },
-      }),
-    });
-    clearTimeout(timeout);
-
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json() as { response?: string };
-    const raw = (data.response ?? "").trim();
+    const result = await aiComplete(prompt, 200);
+    if (!result) throw new Error("AI returned null");
 
     // Extract JSON from response (model may wrap in markdown fences)
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    const jsonMatch = result.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("No JSON in response");
     const parsed = JSON.parse(jsonMatch[0]) as { description?: string; topics?: string[] };
 
     const description = (parsed.description ?? "").substring(0, 350);
+    if (!description || description.length < 10) throw new Error("Description too short");
+
     const aiTopics = (parsed.topics ?? []).map((t) => t.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").slice(0, 35));
-    // Merge AI topics with detected ones, deduplicate, cap at 20
     const allTopics = Array.from(new Set([...aiTopics, ...detectedTopics])).slice(0, 20);
 
     return { description, topics: allTopics, homepage };
   } catch {
-    // Fallback: build description from stack + name
-    const description = `${ctx.name} — built with ${ctx.stack.slice(0, 3).join(", ") || "unknown stack"}.`;
-    return { description, topics: detectedTopics, homepage };
+    // Fallback: return empty description so we don't overwrite a good one with junk
+    return { description: "", topics: detectedTopics, homepage };
   }
 }
 
 export async function applyRepoMeta(repoFullName: string, meta: RepoMeta): Promise<void> {
+  // Don't overwrite an existing custom description with an AI-generated one
+  const existing = await Bun.$`gh repo view ${repoFullName} --json description -q .description`.quiet().nothrow();
+  const currentDesc = existing.stdout.toString().trim();
+  const isGeneric = !currentDesc || /^\w+ — built with/.test(currentDesc);
+
   const args = ["repo", "edit", repoFullName];
-  if (meta.description) args.push("--description", meta.description);
+  if (meta.description && isGeneric) args.push("--description", meta.description);
   if (meta.homepage) args.push("--homepage", meta.homepage);
   if (meta.topics.length > 0) args.push("--add-topic", meta.topics.join(","));
   await Bun.$`gh ${args}`.quiet().nothrow();
