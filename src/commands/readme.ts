@@ -1,5 +1,5 @@
 import { writeReadme, generateRepoMeta, applyRepoMeta } from "../lib/readme.ts";
-import { isOllamaRunning } from "../lib/ai.ts";
+import { isAIAvailable } from "../lib/ai.ts";
 import { gp, banner } from "../lib/display.ts";
 import { basename } from "node:path";
 
@@ -7,10 +7,10 @@ export async function runReadme(dir: string = process.cwd()): Promise<void> {
   banner();
   gp.header(`Generate README — ${basename(dir)}`);
 
-  const ollamaOk = await isOllamaRunning();
-  if (!ollamaOk) {
-    gp.warn("Ollama is not running. A basic template README will be generated.");
-    gp.info("Start Ollama for AI-powered READMEs: ollama serve");
+  const aiOk = await isAIAvailable();
+  if (!aiOk) {
+    gp.warn("No AI provider available. A basic template README will be generated.");
+    gp.info("Configure OpenAI (openai_api_key) or start Ollama for AI-powered READMEs.");
   } else {
     gp.info("Reading your project files...");
     gp.info("Generating README with AI (this takes 10-30 seconds)...");

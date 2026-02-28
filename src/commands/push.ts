@@ -3,7 +3,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { gitStatus, gitAdd, gitCommit, gitPush, gitDiff, hasRemote } from "../lib/git.ts";
-import { generateCommitMessage, isOllamaRunning } from "../lib/ai.ts";
+import { generateCommitMessage, isAIAvailable } from "../lib/ai.ts";
 import { loadConfig } from "../lib/config.ts";
 import { gp, banner } from "../lib/display.ts";
 import chalk from "chalk";
@@ -139,8 +139,8 @@ export async function runPush(dir: string = process.cwd(), opts: PushOptions = {
   if (providedMessage) {
     message = providedMessage;
   } else {
-    const ollamaOk = await isOllamaRunning();
-    if (!quiet && !ollamaOk) gp.warn("Ollama is not running. Using a basic commit message.");
+    const aiOk = await isAIAvailable();
+    if (!quiet && !aiOk) gp.warn("No AI provider available. Using a basic commit message.");
     if (!quiet) gp.info("Generating commit message...");
     message = await generateCommitMessage(diff);
   }
