@@ -130,7 +130,9 @@ async function main(): Promise<void> {
         await installDigestCron();
       } else {
         const isCron = args.includes("--cron") || args.includes("--quiet");
-        await runDigest(isCron);
+        const editionArg = args.find(a => a.startsWith("--edition="))?.split("=")[1];
+        const forceEdition = editionArg === "morning" || editionArg === "noon" || editionArg === "evening" || editionArg === "midnight" ? editionArg : undefined;
+        await runDigest(isCron, forceEdition);
         if (isCron) {
           // Also refresh all READMEs as part of daily cron run
           await runDailyReadmeRefresh(true);

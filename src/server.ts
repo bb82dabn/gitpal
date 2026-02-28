@@ -323,18 +323,66 @@ async function handleRequest(req: Request): Promise<Response> {
     return new Response(file, { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=300" } });
   }
 
+  // Archive index: GET /api/digest/archive
+  if (pathname === "/api/digest/archive" && req.method === "GET") {
+    const archiveDir = join(HOME, ".gitpal", "log", "gazette");
+    if (!existsSync(archiveDir)) return jsonResponse([]);
+    const EDITIONS = ["morning", "noon", "evening"] as const;
+    const days: Array<{ date: string; editions: string[] }> = [];
+    let entries: string[] = [];
+    try { entries = readdirSync(archiveDir); } catch { return jsonResponse([]); }
+    const dateDirs = entries
+      .filter(e => /^\d{4}-\d{2}-\d{2}$/.test(e))
+      .filter(e => { try { return statSync(join(archiveDir, e)).isDirectory(); } catch { return false; } })
+      .sort((a, b) => b.localeCompare(a)); // newest first
+    for (const date of dateDirs) {
+      const dayDir = join(archiveDir, date);
+      const editions = EDITIONS.filter(ed => existsSync(join(dayDir, `${ed}.json`)));
+      if (editions.length > 0) days.push({ date, editions });
+    }
+    return jsonResponse(days);
+  }
+
   if (pathname === "/api/digest" && req.method === "GET") {
-    // Try new gazette JSON first, fall back to legacy markdown
-    const gazettePath = join(HOME, ".gitpal", "log", "gazette.json");
-    if (existsSync(gazettePath)) {
+    const edition = url.searchParams.get("edition"); // morning | noon | evening | null (latest)
+    const date = url.searchParams.get("date");       // YYYY-MM-DD | null (today/current)
+    const logDir = join(HOME, ".gitpal", "log");
+    const archiveDir = join(logDir, "gazette");
+
+    // If a specific date is requested, read from archive
+    if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      const editionKey = edition === "morning" ? "morning" : edition === "noon" ? "noon" : edition === "evening" ? "evening" : edition === "midnight" ? "midnight" : null;
+      const dayDir = join(archiveDir, date);
+      // Try requested edition, then fall back through the day's editions
+      const candidates = editionKey
+        ? [`${editionKey}.json`, "evening.json", "noon.json", "morning.json"]
+        : ["evening.json", "noon.json", "morning.json"];
+      for (const f of candidates) {
+        const p = join(dayDir, f);
+        if (existsSync(p)) {
+          try { return jsonResponse(JSON.parse(readFileSync(p, "utf8"))); } catch { break; }
+        }
+      }
+      return jsonResponse({ content: null, generated: null });
+    }
+
+    // No date — serve current edition files
+    const editionFile = edition === "morning" ? "gazette-morning.json"
+      : edition === "noon" ? "gazette-noon.json"
+      : edition === "evening" ? "gazette-evening.json"
+      : edition === "midnight" ? "gazette-midnight.json"
+      : "gazette.json";
+    const gazettePath = join(logDir, editionFile);
+    const resolvedPath = existsSync(gazettePath) ? gazettePath : join(logDir, "gazette.json");
+    if (existsSync(resolvedPath)) {
       try {
-        const raw = readFileSync(gazettePath, "utf8");
+        const raw = readFileSync(resolvedPath, "utf8");
         const data = JSON.parse(raw);
         return jsonResponse(data);
       } catch { /* fall through to legacy */ }
     }
     // Legacy markdown fallback
-    const digestPath = join(HOME, ".gitpal", "log", "digest.md");
+    const digestPath = join(logDir, "digest.md");
     if (!existsSync(digestPath)) {
       return jsonResponse({ content: null, generated: null });
     }

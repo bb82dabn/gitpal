@@ -173,6 +173,53 @@ export async function aiComplete(prompt: string, maxTokens = 80): Promise<string
   return callOllama(config, prompt);
 }
 
+// ── DALL-E image generation ───────────────────────────────────────────────
+
+interface OpenAIImageResponse {
+  data?: Array<{ url?: string }>;
+}
+
+/**
+ * Generate an image via DALL-E 3 and return the URL, or null on failure.
+ * style: 'vivid' (dramatic) | 'natural' (realistic)
+ */
+export async function aiImage(
+  prompt: string,
+  style: "vivid" | "natural" = "vivid",
+): Promise<string | null> {
+  const config = await loadConfig();
+  if (!config.openai_api_key) return null;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60_000);
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${config.openai_api_key}`,
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: "dall-e-3",
+        prompt,
+        n: 1,
+        size: "1024x1024",
+        style,
+        response_format: "url",
+      }),
+    });
+    clearTimeout(timeout);
+    if (!response.ok) return null;
+    const data = await response.json() as OpenAIImageResponse;
+    return data.data?.[0]?.url ?? null;
+  } catch {
+    clearTimeout(timeout);
+    return null;
+  }
+}
+
 // ── Main export: commit messages ────────────────────────────────────────────
 
 export async function generateCommitMessage(diff: string): Promise<string> {

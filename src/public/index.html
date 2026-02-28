@@ -576,6 +576,39 @@
       .digest-panel { display: none; }
       .digest-panel.visible { display: block; }
 
+      .edition-nav {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 16px;
+        background: #ede9dc;
+        border-radius: 8px;
+        padding: 4px;
+        width: fit-content;
+      }
+
+      .edition-btn {
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        padding: 5px 14px;
+        border-radius: 5px;
+        border: none;
+        background: transparent;
+        color: #888;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+      }
+
+      .edition-btn:hover { color: #333; }
+
+      .edition-btn.active {
+        background: #faf8f2;
+        color: #111;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+      }
+
       /* ── Gazette (newspaper style — intentional light theme) ── */
       .gazette {
         background: #faf8f2;
@@ -678,6 +711,59 @@
       .gz-empty { text-align: center; padding: 60px 28px; font-family: Georgia, serif; font-size: 15px; color: #888; }
       .gz-empty code { font-family: var(--mono); font-size: 12px; background: #e8e4d8; padding: 2px 6px; border-radius: 3px; }
 
+      /* ── Comics & Oddities ── */
+      .gz-comics {
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 3px double #1a1a1a;
+      }
+      .gz-comics-title {
+        font-family: var(--serif);
+        font-size: 13px;
+        font-style: italic;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: #666;
+        text-align: center;
+        margin-bottom: 16px;
+      }
+      .gz-joke-article {
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px dashed #ccc;
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        gap: 16px;
+        align-items: start;
+      }
+      .gz-joke-article:last-child { border-bottom: none; }
+      .gz-joke-img {
+        width: 200px;
+        height: 200px;
+        object-fit: cover;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+        display: block;
+      }
+      .gz-joke-headline {
+        font-family: var(--serif);
+        font-size: 18px;
+        font-style: italic;
+        font-weight: 400;
+        line-height: 1.25;
+        margin: 0 0 8px;
+        color: #1a1a1a;
+      }
+      .gz-joke-body {
+        font-family: Georgia, serif;
+        font-size: 13px;
+        line-height: 1.65;
+        color: #333;
+        margin: 0 0 6px;
+      }
+      .gz-joke-byline { font-style: italic; color: #999; }
+@media (max-width: 600px) { .gz-joke-article { grid-template-columns: 1fr; } .gz-joke-img { width: 100%; height: auto; } }
+
       /* ── Responsive ── */
       @media (max-width: 900px) {
         .main-grid { grid-template-columns: 1fr; }
@@ -738,9 +824,25 @@
       </main>
 
       <div class="digest-panel" id="digest-panel">
-        <div id="gazette-root"></div>
+        <div class="digest-layout">
+          <aside class="archive-panel">
+            <div class="archive-head">Archive</div>
+            <div class="archive-list" id="archive-list">
+              <button class="archive-today-btn" id="archive-today-btn" type="button">→ Today</button>
+              <div class="archive-empty">Loading…</div>
+            </div>
+          </aside>
+          <div>
+            <nav class="edition-nav" id="edition-nav">
+              <button class="edition-btn active" data-edition="morning" type="button">☀ Morning</button>
+              <button class="edition-btn" data-edition="noon" type="button">☼ Noon</button>
+              <button class="edition-btn" data-edition="evening" type="button">☾ Evening</button>
+              <button class="edition-btn" data-edition="midnight" type="button">★ Midnight</button>
+            </nav>
+            <div id="gazette-root"></div>
+          </div>
+        </div>
       </div>
-    </div>
 
     <script>
       const pulseDot = document.getElementById("pulse-dot");
@@ -950,6 +1052,8 @@
       const tabDigest = document.getElementById("tab-digest");
       const mainGrid = document.querySelector(".main-grid");
       const digestPanel = document.getElementById("digest-panel");
+      let currentEdition = "morning";
+      let currentDate = null; // null = today/current
 
       function showTab(name) {
         const isDashboard = name === "dashboard";
@@ -957,11 +1061,88 @@
         tabDigest.classList.toggle("active", !isDashboard);
         mainGrid.style.display = isDashboard ? "" : "none";
         digestPanel.classList.toggle("visible", !isDashboard);
-        if (!isDashboard) refreshDigest();
+        if (!isDashboard) {
+          refreshDigest();
+          loadArchive();
+        }
       }
 
       tabDashboard.addEventListener("click", () => showTab("dashboard"));
       tabDigest.addEventListener("click", () => showTab("digest"));
+
+      // Edition nav
+      document.getElementById("edition-nav").addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-edition]");
+        if (!btn) return;
+        document.querySelectorAll(".edition-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentEdition = btn.dataset.edition;
+        refreshDigest();
+      });
+
+      // Archive: today button
+      document.getElementById("archive-today-btn").addEventListener("click", () => {
+        currentDate = null;
+        document.querySelectorAll(".archive-date-btn").forEach(b => b.classList.remove("active"));
+        refreshDigest();
+      });
+
+      // Archive: load date list
+      async function loadArchive() {
+        const list = document.getElementById("archive-list");
+        try {
+          const days = await fetchJson("/api/digest/archive");
+          if (!days.length) {
+            list.innerHTML = '<button class="archive-today-btn" id="archive-today-btn" type="button">→ Today</button><div class="archive-empty">No archive yet.</div>';
+            document.getElementById("archive-today-btn").addEventListener("click", () => { currentDate = null; refreshDigest(); });
+            return;
+          }
+          const todayBtn = '<button class="archive-today-btn" id="archive-today-btn" type="button">→ Today</button>';
+          const rows = days.map(({ date, editions }) => {
+            const label = formatArchiveDate(date);
+            const edBtns = editions.map(ed =>
+              `<button class="archive-edition-btn" data-date="${date}" data-edition="${ed}" type="button">${editionLabel(ed)}</button>`
+            ).join("");
+            return `<div class="archive-date">` +
+              `<button class="archive-date-btn" data-date="${date}" type="button"><span>${label}</span><span class="chevron">›</span></button>` +
+              `<div class="archive-editions">${edBtns}</div>` +
+              `</div>`;
+          }).join("");
+          list.innerHTML = todayBtn + rows;
+          document.getElementById("archive-today-btn").addEventListener("click", () => { currentDate = null; refreshDigest(); });
+          list.querySelectorAll(".archive-date-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+              const editions = btn.nextElementSibling;
+              const isOpen = editions.classList.contains("open");
+              list.querySelectorAll(".archive-editions").forEach(e => e.classList.remove("open"));
+              list.querySelectorAll(".archive-date-btn").forEach(b => b.classList.remove("open", "active"));
+              if (!isOpen) { editions.classList.add("open"); btn.classList.add("open", "active"); }
+            });
+          });
+          list.querySelectorAll(".archive-edition-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+              list.querySelectorAll(".archive-edition-btn").forEach(b => b.classList.remove("active"));
+              btn.classList.add("active");
+              currentDate = btn.dataset.date;
+              currentEdition = btn.dataset.edition;
+              document.querySelectorAll(".edition-btn").forEach(b => b.classList.toggle("active", b.dataset.edition === currentEdition));
+              refreshDigest();
+            });
+          });
+        } catch {
+          list.innerHTML = '<button class="archive-today-btn" id="archive-today-btn" type="button">→ Today</button><div class="archive-empty">Could not load archive.</div>';
+          document.getElementById("archive-today-btn").addEventListener("click", () => { currentDate = null; refreshDigest(); });
+        }
+      }
+
+      function formatArchiveDate(dateStr) {
+        const d = new Date(dateStr + "T12:00:00");
+        return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      }
+
+      function editionLabel(ed) {
+        return ed === "morning" ? "☀ Morning" : ed === "noon" ? "☼ Noon" : ed === "evening" ? "☾ Evening" : "★ Midnight";
+      }
 
       // Gazette
       function esc(s) {
@@ -985,8 +1166,9 @@
           }
         }
 
-        const featured = data.articles.find(a => a.featured) || data.articles[0];
-        const others = data.articles.filter(a => a !== featured);
+        const featured = data.articles.find(a => a.featured && !a.joke) || data.articles.find(a => !a.joke) || data.articles[0];
+        const jokes = data.articles.filter(a => a.joke);
+        const others = data.articles.filter(a => a !== featured && !a.joke);
 
         let html = '<div class="gazette">';
         html += '<div class="gz-masthead">';
@@ -1001,8 +1183,9 @@
           html += '<div class="gz-featured">';
           html += '<h2 class="gz-featured-headline">' + esc(featured.headline) + "</h2>";
           html += '<div class="gz-featured-inner">';
-          if (featured.screenshot) {
-            html += '<img class="gz-featured-img" src="/screenshots/' + esc(featured.screenshot) + '" alt="' + esc(featured.project) + '" onerror="this.style.display=\'none\'">';
+          const featImg = featured.aiGeneratedImage || (featured.screenshot ? '/screenshots/' + esc(featured.screenshot) : null);
+          if (featImg) {
+            html += '<img class="gz-featured-img" src="' + esc(featImg) + '" alt="' + esc(featured.project) + '" onerror="this.style.display=\'none\'">';
           }
           html += '<div class="gz-featured-text">';
           html += '<p class="gz-featured-body">' + esc(featured.body) + "</p>";
@@ -1014,15 +1197,31 @@
           html += '<div class="gz-articles">';
           for (const a of others) {
             html += '<div class="gz-article">';
-            html += '<h3 class="gz-article-headline">' + esc(a.headline) + "</h3>";
+            html += '<h3 class="gz-article-headline">' + esc(a.headline) + '</h3>';
             if (a.screenshot) {
               html += '<img class="gz-article-img" src="/screenshots/' + esc(a.screenshot) + '" alt="' + esc(a.project) + '" onerror="this.style.display=\'none\'">';
             }
-            html += '<p class="gz-article-body">' + esc(a.body) + "</p>";
-            html += '<div class="gz-byline">' + esc(a.project) + " &middot; " + a.commits + " commit(s) &middot; +" + a.linesAdded + " -" + a.linesRemoved + "</div>";
-            html += "</div>";
+            html += '<p class="gz-article-body">' + esc(a.body) + '</p>';
+            html += '<div class="gz-byline">' + esc(a.project) + ' &middot; ' + a.commits + ' commit(s) &middot; +' + a.linesAdded + ' -' + a.linesRemoved + '</div>';
+            html += '</div>';
           }
-          html += "</div>";
+          html += '</div>';
+        }
+
+        if (jokes.length > 0) {
+          html += '<div class="gz-comics">';
+          html += '<div class="gz-comics-title">Comics &amp; Oddities</div>';
+          for (const a of jokes) {
+            html += '<div class="gz-joke-article">';
+            if (a.aiGeneratedImage) {
+              html += '<img class="gz-joke-img" src="' + esc(a.aiGeneratedImage) + '" alt="' + esc(a.project) + '" onerror="this.style.display=\'none\'">';
+            }
+            html += '<h3 class="gz-joke-headline">' + esc(a.headline) + '</h3>';
+            html += '<p class="gz-joke-body">' + esc(a.body) + '</p>';
+            html += '<div class="gz-byline gz-joke-byline">' + esc(a.project) + ' &middot; satire</div>';
+            html += '</div>';
+          }
+          html += '</div>';
         }
 
         html += "</div>";
@@ -1072,10 +1271,13 @@
       }
 
       async function refreshDigest() {
+        const root = document.getElementById("gazette-root");
+        if (root) root.innerHTML = '<div class="gz-empty" style="opacity:0.5">Loading…</div>';
         try {
-          renderGazette(await fetchJson("/api/digest"));
+          const params = new URLSearchParams({ edition: currentEdition });
+          if (currentDate) params.set("date", currentDate);
+          renderGazette(await fetchJson(`/api/digest?${params}`));
         } catch {
-          const root = document.getElementById("gazette-root");
           if (root) root.innerHTML = '<div class="gz-empty">Could not load the Gazette.</div>';
         }
       }
