@@ -4,8 +4,8 @@
   "type": "module",
   "scripts": {
     "start": "bun run src/index.ts",
-    "build": "mkdir -p dist && bun build src/index.ts --compile --outfile dist/gp && bun build src/watcher-daemon.ts --compile --outfile dist/gp-watcher && bun build src/projects-watcher-daemon.ts --compile --outfile dist/gp-projects-watcher",
-    "install-bin": "bun run build && cp dist/gp ~/.local/bin/gp && chmod +x ~/.local/bin/gp && cp dist/gp-watcher ~/.local/bin/gp-watcher && chmod +x ~/.local/bin/gp-watcher && cp dist/gp-projects-watcher ~/.local/bin/gp-projects-watcher && chmod +x ~/.local/bin/gp-projects-watcher && bash install-shell.sh && echo 'Done! Run: source ~/.bashrc'"
+    "build": "mkdir -p dist && bun build src/index.ts --compile --outfile dist/gp && bun build src/watcher-daemon.ts --compile --outfile dist/gp-watcher && bun build src/projects-watcher-daemon.ts --compile --outfile dist/gp-projects-watcher && bun build src/server.ts --compile --outfile dist/gp-server",
+    "install-bin": "bun run build && cp dist/gp ~/.local/bin/gp && chmod +x ~/.local/bin/gp && cp dist/gp-watcher ~/.local/bin/gp-watcher && chmod +x ~/.local/bin/gp-watcher && cp dist/gp-projects-watcher ~/.local/bin/gp-projects-watcher && chmod +x ~/.local/bin/gp-projects-watcher && cp dist/gp-server ~/.local/bin/gp-server && chmod +x ~/.local/bin/gp-server && mkdir -p ~/.local/share/gitpal && cp src/public/index.html ~/.local/share/gitpal/index.html && bash install-shell.sh && echo 'Done! Run: source ~/.bashrc'"
   },
   "devDependencies": {
     "@types/bun": "latest"

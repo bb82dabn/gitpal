@@ -4,6 +4,8 @@
  * Usage: gp <command> [args]
  */
 
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { runSetup } from "./commands/setup.ts";
 import { runInit } from "./commands/init.ts";
 import { runPush, type PushOptions } from "./commands/push.ts";
@@ -161,6 +163,36 @@ async function main(): Promise<void> {
       await runSync(process.cwd());
       break;
 
+    case "serve": {
+      const pidFile = join(homedir(), ".gitpal", "sessions", "gp-server.pid");
+      let running = false;
+
+      if (await Bun.file(pidFile).exists()) {
+        const raw = await Bun.file(pidFile).text();
+        const pid = parseInt(raw.trim(), 10);
+        if (Number.isFinite(pid)) {
+          const alive = await Bun.$`kill -0 ${pid}`.quiet().nothrow();
+          running = alive.exitCode === 0;
+        }
+      }
+
+      if (running) {
+        console.log("GitPal dashboard already running at http://localhost:4242");
+        break;
+      }
+
+      const serverPath = join(homedir(), ".local", "bin", "gp-server");
+      const child = Bun.spawn([serverPath], {
+        detached: true,
+        stdin: "ignore",
+        stdout: "ignore",
+        stderr: "ignore",
+      });
+      child.unref();
+      console.log("GitPal dashboard started at http://localhost:4242");
+      break;
+    }
+
     default:
 
       banner();
@@ -170,6 +202,7 @@ async function main(): Promise<void> {
       console.log("  gp doctor --fix                  Health check + auto-fix issues");
       console.log("  gp recent                        All projects by last activity");
       console.log("  gp status                        All projects at a glance");
+      console.log("  gp serve                          Start the web dashboard (localhost:4242)");
       console.log("  gp digest                        What changed yesterday + container health");
       console.log("  gp digest --install-cron         Auto-run digest at 9am daily");
       console.log("  gp push                          Commit + push to GitHub");

@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GitPal Dashboard</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap");
+
+      :root {
+        color-scheme: dark;
+        --bg: #0d1117;
+        --panel: #101621;
+        --panel-2: #0f141d;
+        --border: #1e2734;
+        --text: #d7dde5;
+        --muted: #8a94a6;
+        --accent: #2ea043;
+        --warn: #d29922;
+        --danger: #f85149;
+        --cyan: #5dd6c0;
+        --blue: #58a6ff;
+        --shadow: 0 18px 50px rgba(4, 10, 18, 0.4);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        background:
+          radial-gradient(1200px 700px at 10% -10%, rgba(42, 68, 96, 0.45), transparent 55%),
+          radial-gradient(1000px 600px at 95% 0%, rgba(20, 62, 82, 0.4), transparent 60%),
+          #0d1117;
+        color: var(--text);
+        min-height: 100vh;
+      }
+
+      .app {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 28px 28px 40px;
+      }
+
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding-bottom: 18px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .brand {
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .header-meta {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .refresh-status {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .refresh-indicator {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: rgba(93, 214, 192, 0.3);
+        box-shadow: 0 0 0 0 rgba(93, 214, 192, 0.25);
+      }
+
+      .refresh-indicator.is-loading {
+        animation: pulse 1.4s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(93, 214, 192, 0.35); }
+        70% { box-shadow: 0 0 0 10px rgba(93, 214, 192, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(93, 214, 192, 0); }
+      }
+
+      .btn {
+        background: linear-gradient(135deg, rgba(46, 160, 67, 0.18), rgba(46, 160, 67, 0.05));
+        border: 1px solid rgba(46, 160, 67, 0.5);
+        color: var(--text);
+        padding: 8px 14px;
+        font-size: 13px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: transform 0.2s ease, border-color 0.2s ease;
+      }
+
+      .btn:hover {
+        transform: translateY(-1px);
+        border-color: rgba(46, 160, 67, 0.8);
+      }
+
+      .main-grid {
+        display: grid;
+        grid-template-columns: 0.85fr 1.6fr;
+        gap: 20px;
+        margin-top: 20px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 18px;
+        box-shadow: var(--shadow);
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+      }
+
+      .panel-title {
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--muted);
+      }
+
+      .doctor-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .doctor-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: var(--panel-2);
+        border: 1px solid rgba(30, 39, 52, 0.8);
+      }
+
+      .doctor-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+      }
+
+      .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+
+      .status-pass { background: var(--accent); }
+      .status-warn { background: var(--warn); }
+      .status-fail { background: var(--danger); }
+
+      .doctor-detail {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .right-column {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .projects-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 14px;
+      }
+
+      .project-card {
+        background: rgba(16, 22, 33, 0.9);
+        border: 1px solid rgba(30, 39, 52, 0.9);
+        border-radius: 12px;
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .project-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .project-name {
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      .project-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        border: 1px solid rgba(88, 166, 255, 0.4);
+        color: var(--blue);
+        text-decoration: none;
+        transition: border-color 0.2s ease, color 0.2s ease;
+      }
+
+      .project-link:hover {
+        border-color: rgba(88, 166, 255, 0.9);
+        color: #9ac7ff;
+      }
+
+      .project-link.disabled {
+        opacity: 0.3;
+        pointer-events: none;
+      }
+
+      .project-meta {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .project-meta strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      .project-status {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 12px;
+      }
+
+      .badge {
+        padding: 4px 8px;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 11px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .badge.clean {
+        background: rgba(46, 160, 67, 0.16);
+        color: #7ee787;
+        border: 1px solid rgba(46, 160, 67, 0.35);
+      }
+
+      .badge.dirty {
+        background: rgba(210, 153, 34, 0.14);
+        color: #f2cc60;
+        border: 1px solid rgba(210, 153, 34, 0.35);
+      }
+
+      .watcher {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--muted);
+      }
+
+      .watcher-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+
+      .watcher-dot.running { background: var(--accent); }
+      .watcher-dot.stopped { background: var(--danger); }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .action-btn {
+        flex: 1;
+        background: rgba(16, 22, 33, 0.9);
+        border: 1px solid rgba(48, 59, 76, 0.8);
+        color: var(--text);
+        padding: 8px 10px;
+        font-size: 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        position: relative;
+        transition: border-color 0.2s ease, color 0.2s ease;
+      }
+
+      .action-btn:hover {
+        border-color: rgba(93, 214, 192, 0.6);
+        color: #e9fef9;
+      }
+
+      .action-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .spinner {
+        width: 12px;
+        height: 12px;
+        border: 2px solid rgba(93, 214, 192, 0.3);
+        border-top-color: var(--cyan);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        display: none;
+      }
+
+      .action-btn.loading .spinner {
+        display: inline-block;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      .btn-status {
+        font-weight: 700;
+        font-size: 12px;
+      }
+
+      .btn-status.ok { color: var(--accent); }
+      .btn-status.fail { color: var(--danger); }
+
+      .commit-feed {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding-left: 18px;
+      }
+
+      .commit-feed::before {
+        content: "";
+        position: absolute;
+        left: 6px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: rgba(46, 160, 67, 0.25);
+      }
+
+      .commit-entry {
+        display: flex;
+        gap: 12px;
+      }
+
+      .commit-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 12px rgba(46, 160, 67, 0.6);
+        margin-top: 6px;
+      }
+
+      .commit-content {
+        flex: 1;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: rgba(16, 22, 33, 0.85);
+        border: 1px solid rgba(30, 39, 52, 0.8);
+      }
+
+      .commit-top {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 12px;
+        color: var(--muted);
+        flex-wrap: wrap;
+      }
+
+      .project-chip {
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid rgba(93, 214, 192, 0.4);
+        color: var(--cyan);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 10px;
+      }
+
+      .commit-hash {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+        color: #f0f6fc;
+      }
+
+      .commit-message {
+        margin-top: 6px;
+        font-size: 14px;
+        color: var(--text);
+      }
+
+      .empty-state {
+        font-size: 13px;
+        color: var(--muted);
+        padding: 8px 4px;
+      }
+
+      @media (max-width: 980px) {
+        .main-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="header">
+        <div class="brand">GitPal</div>
+        <div class="header-meta">
+          <div class="refresh-status">
+            <span id="refresh-indicator" class="refresh-indicator"></span>
+            <span id="last-refreshed">Last refresh: --:--:--</span>
+          </div>
+          <button class="btn" id="refresh-btn" type="button">Refresh</button>
+        </div>
+      </header>
+
+      <main class="main-grid">
+        <section class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Doctor</div>
+          </div>
+          <div class="doctor-list" id="doctor-list"></div>
+        </section>
+
+        <section class="right-column">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Projects</div>
+              <div class="project-meta"><strong id="projects-count">0</strong> tracked</div>
+            </div>
+            <div class="projects-list" id="projects-list"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Commit Feed</div>
+            </div>
+            <div class="commit-feed" id="commit-feed"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const refreshIndicator = document.getElementById("refresh-indicator");
+      const lastRefreshed = document.getElementById("last-refreshed");
+      const refreshButton = document.getElementById("refresh-btn");
+      const doctorList = document.getElementById("doctor-list");
+      const projectsList = document.getElementById("projects-list");
+      const commitFeed = document.getElementById("commit-feed");
+      const projectsCount = document.getElementById("projects-count");
+
+      let projectsLoading = false;
+      let doctorLoading = false;
+
+      function setLoading() {
+        const active = projectsLoading || doctorLoading;
+        refreshIndicator.classList.toggle("is-loading", active);
+      }
+
+      function updateLastRefreshed() {
+        const now = new Date();
+        lastRefreshed.textContent = `Last refresh: ${now.toLocaleTimeString()}`;
+      }
+
+      function createElement(tag, className, text) {
+        const el = document.createElement(tag);
+        if (className) el.className = className;
+        if (text !== undefined) el.textContent = text;
+        return el;
+      }
+
+      async function fetchJson(url) {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+        return response.json();
+      }
+
+      function renderDoctor(items) {
+        doctorList.replaceChildren();
+        if (!items.length) {
+          doctorList.appendChild(createElement("div", "empty-state", "No health checks yet."));
+          return;
+        }
+
+        for (const item of items) {
+          const row = createElement("div", "doctor-item");
+          const labelWrap = createElement("div", "doctor-label");
+          const dot = createElement("span", `status-dot status-${item.status}`);
+          const label = createElement("span", null, item.label);
+          labelWrap.append(dot, label);
+
+          const detail = createElement("span", "doctor-detail", item.detail);
+          row.append(labelWrap, detail);
+          doctorList.appendChild(row);
+        }
+      }
+
+      function renderProjects(projects) {
+        projectsList.replaceChildren();
+        projectsCount.textContent = String(projects.length);
+
+        if (!projects.length) {
+          projectsList.appendChild(createElement("div", "empty-state", "No Git repositories found."));
+          return;
+        }
+
+        for (const project of projects) {
+          const card = createElement("div", "project-card");
+          const top = createElement("div", "project-top");
+          const nameWrap = createElement("div", null);
+          const name = createElement("div", "project-name", project.name);
+          nameWrap.appendChild(name);
+
+          const link = document.createElement("a");
+          link.className = "project-link";
+          link.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 1 0-7.07-7.07L10 5" />
+              <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 1 0 7.07 7.07L14 19" />
+            </svg>
+          `;
+          if (project.hasRemote && project.remoteUrl) {
+            link.href = project.remoteUrl;
+            link.target = "_blank";
+            link.rel = "noreferrer";
+          } else {
+            link.classList.add("disabled");
+          }
+
+          top.append(nameWrap, link);
+
+          const meta = createElement("div", "project-meta");
+          const message = project.lastCommit?.message || "No commits yet";
+          const relative = project.lastCommit?.relativeDate || "";
+          meta.innerHTML = `<strong>${message}</strong>${relative ? ` · ${relative}` : ""}`;
+
+          const statusRow = createElement("div", "project-status");
+          const badge = createElement("span", `badge ${project.dirty ? "dirty" : "clean"}`);
+          badge.textContent = project.dirty ? `● ${project.changedFiles} changes` : "clean";
+
+          const watcher = createElement("span", "watcher");
+          const watcherDot = createElement("span", `watcher-dot ${project.watcherRunning ? "running" : "stopped"}`);
+          const watcherLabel = createElement("span", null, project.watcherRunning ? "watcher on" : "watcher off");
+          watcher.append(watcherDot, watcherLabel);
+
+          statusRow.append(badge, watcher);
+
+          const actions = createElement("div", "actions");
+          ["push", "sync", "undo"].forEach((action) => {
+            const btn = createElement("button", "action-btn");
+            btn.type = "button";
+            btn.dataset.action = action;
+            btn.dataset.project = project.name;
+
+            const label = createElement("span", null, action.charAt(0).toUpperCase() + action.slice(1));
+            const spinner = createElement("span", "spinner");
+            const status = createElement("span", "btn-status");
+            btn.append(label, spinner, status);
+            actions.appendChild(btn);
+          });
+
+          card.append(top, meta, statusRow, actions);
+          projectsList.appendChild(card);
+        }
+      }
+
+      function renderCommitFeed(entries) {
+        commitFeed.replaceChildren();
+        if (!entries.length) {
+          commitFeed.appendChild(createElement("div", "empty-state", "No recent commits."));
+          return;
+        }
+
+        for (const entry of entries) {
+          const item = createElement("div", "commit-entry");
+          const dot = createElement("div", "commit-dot");
+          const content = createElement("div", "commit-content");
+          const top = createElement("div", "commit-top");
+
+          const chip = createElement("span", "project-chip", entry.project);
+          const hash = createElement("span", "commit-hash", entry.shortHash || entry.hash || "");
+          const date = createElement("span", null, entry.relativeDate || "");
+          top.append(chip, hash, date);
+
+          const message = createElement("div", "commit-message", entry.message || "");
+          content.append(top, message);
+          item.append(dot, content);
+          commitFeed.appendChild(item);
+        }
+      }
+
+      async function refreshDoctor() {
+        doctorLoading = true;
+        setLoading();
+        try {
+          const items = await fetchJson("/api/doctor");
+          renderDoctor(items);
+        } catch {
+          renderDoctor([]);
+        } finally {
+          doctorLoading = false;
+          setLoading();
+        }
+      }
+
+      async function refreshProjectsAndCommits() {
+        if (projectsLoading) return;
+        projectsLoading = true;
+        setLoading();
+        try {
+          const projects = await fetchJson("/api/projects");
+          renderProjects(projects);
+
+          const commitResponses = await Promise.all(
+            projects.map((project) =>
+              fetchJson(`/api/commits?project=${encodeURIComponent(project.name)}&n=5`)
+                .then((commits) => commits.map((commit) => ({ ...commit, project: project.name })))
+                .catch(() => [])
+            )
+          );
+
+          const merged = commitResponses.flat();
+          merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          renderCommitFeed(merged);
+          updateLastRefreshed();
+        } catch {
+          renderProjects([]);
+          renderCommitFeed([]);
+        } finally {
+          projectsLoading = false;
+          setLoading();
+        }
+      }
+
+      async function handleAction(button) {
+        const action = button.dataset.action;
+        const project = button.dataset.project;
+        if (!action || !project) return;
+
+        button.classList.add("loading");
+        button.disabled = true;
+        const status = button.querySelector(".btn-status");
+
+        try {
+          const response = await fetch("/api/action", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action, project }),
+          });
+          const data = await response.json().catch(() => ({ ok: false }));
+          const ok = response.ok && data.ok;
+          status.textContent = ok ? "✓" : "✗";
+          status.className = `btn-status ${ok ? "ok" : "fail"}`;
+        } catch {
+          status.textContent = "✗";
+          status.className = "btn-status fail";
+        } finally {
+          setTimeout(() => {
+            status.textContent = "";
+            status.className = "btn-status";
+          }, 1400);
+          button.classList.remove("loading");
+          button.disabled = false;
+          setTimeout(refreshProjectsAndCommits, 900);
+        }
+      }
+
+      projectsList.addEventListener("click", (event) => {
+        const target = event.target.closest("button[data-action]");
+        if (target) handleAction(target);
+      });
+
+      refreshButton.addEventListener("click", () => {
+        refreshProjectsAndCommits();
+        refreshDoctor();
+      });
+
+      refreshProjectsAndCommits();
+      refreshDoctor();
+      setInterval(refreshProjectsAndCommits, 15000);
+      setInterval(refreshDoctor, 30000);
+    </script>
+  </body>
+</html>
