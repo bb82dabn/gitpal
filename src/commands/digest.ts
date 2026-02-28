@@ -86,12 +86,12 @@ async function getYesterdayDiffStats(dir: string): Promise<{ added: number; remo
 
     for (const line of output.split("\n")) {
       const fileMatch = line.match(/^\s*(.+?)\s+\|\s+\d+/);
-      if (fileMatch) files.push(fileMatch[1].trim());
+      if (fileMatch?.[1]) files.push(fileMatch[1].trim());
 
       const statMatch = line.match(/(\d+) insertions?\(\+\)/);
       const delMatch = line.match(/(\d+) deletions?\(-\)/);
-      if (statMatch) added += parseInt(statMatch[1], 10);
-      if (delMatch) removed += parseInt(delMatch[1], 10);
+      if (statMatch?.[1]) added += parseInt(statMatch[1], 10);
+      if (delMatch?.[1]) removed += parseInt(delMatch[1], 10);
     }
 
     return { added, removed, files };
@@ -157,10 +157,11 @@ async function captureScreenshot(projectName: string, port: string): Promise<str
   const url = `http://localhost:${port}/`;
 
   try {
-    const result = await Bun.$`${CHROME_BIN} --headless --disable-gpu --no-sandbox --screenshot=${outPath} --window-size=1280,800 ${url}`.quiet().nothrow().timeout(15_000);
-    if (result.exitCode === 0 && existsSync(outPath)) {
-      return `${projectName}.png`;
-    }
+    const proc = Bun.spawn([CHROME_BIN, "--headless", "--disable-gpu", "--no-sandbox", `--screenshot=${outPath}`, "--window-size=1280,800", url], { stdout: "ignore", stderr: "ignore" });
+    const timer = setTimeout(() => proc.kill(), 15_000);
+    await proc.exited;
+    clearTimeout(timer);
+    if (existsSync(outPath)) return `${projectName}.png`;
   } catch { /* timeout or crash */ }
 
   return null;
@@ -269,7 +270,7 @@ export async function runDigest(quiet = false): Promise<void> {
   // Mark the article with the most commits as featured
   if (articles.length > 0) {
     const sorted = [...articles].sort((a, b) => b.commits - a.commits);
-    sorted[0].featured = true;
+    sorted[0]!.featured = true;
   }
 
   // ── Uncommitted work ──────────────────────────────────────────────────

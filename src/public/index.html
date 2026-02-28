@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GitPal Dashboard</title>
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Playfair+Display:wght@400;700;900&display=swap");
 
       :root {
         color-scheme: dark;
@@ -535,9 +535,208 @@
       }
 
       @media (max-width: 980px) {
-        .main-grid {
-          grid-template-columns: 1fr;
-        }
+        .main-grid { grid-template-columns: 1fr; }
+        .gz-featured-inner { grid-template-columns: 1fr !important; }
+        .gz-articles { column-count: 1 !important; }
+        .gz-body-grid { grid-template-columns: 1fr !important; }
+      }
+
+      /* ── The GitPal Gazette ───────────────────────────────── */
+      .digest-panel {
+        display: none;
+        margin-top: 20px;
+      }
+      .digest-panel.visible { display: block; }
+
+      .gazette {
+        background: #faf8f0;
+        color: #1a1a1a;
+        border-radius: 14px;
+        padding: 0;
+        overflow: hidden;
+        box-shadow: 0 18px 50px rgba(4,10,18,0.4);
+      }
+
+      .gz-masthead {
+        text-align: center;
+        padding: 28px 32px 0;
+        border-bottom: 3px double #1a1a1a;
+      }
+      .gz-masthead-rule { border: none; border-top: 1px solid #1a1a1a; margin: 0 0 6px; }
+      .gz-title {
+        font-family: "Playfair Display", Georgia, "Times New Roman", serif;
+        font-size: 42px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin: 0;
+        line-height: 1.1;
+      }
+      .gz-dateline {
+        font-family: "IBM Plex Sans", sans-serif;
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #666;
+        padding: 8px 0 14px;
+      }
+
+      .gz-body-grid {
+        display: grid;
+        grid-template-columns: 1fr 260px;
+        gap: 0;
+      }
+
+      .gz-main { padding: 24px 28px; }
+
+      /* Featured article */
+      .gz-featured {
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #ccc;
+      }
+      .gz-featured-headline {
+        font-family: "Playfair Display", Georgia, serif;
+        font-size: 30px;
+        font-weight: 700;
+        line-height: 1.2;
+        margin: 0 0 14px;
+        color: #1a1a1a;
+      }
+      .gz-featured-inner {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 20px;
+        align-items: start;
+      }
+      .gz-featured-img {
+        width: 100%;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+        display: block;
+      }
+      .gz-featured-text {}
+      .gz-featured-body {
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 15px;
+        line-height: 1.7;
+        margin: 0;
+        color: #333;
+      }
+      .gz-byline {
+        font-family: "IBM Plex Sans", sans-serif;
+        font-size: 11px;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-top: 10px;
+      }
+
+      /* Article columns */
+      .gz-articles {
+        column-count: 2;
+        column-gap: 28px;
+        column-rule: 1px solid #ccc;
+      }
+      .gz-article {
+        break-inside: avoid;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #e0ddd5;
+      }
+      .gz-article-headline {
+        font-family: "Playfair Display", Georgia, serif;
+        font-size: 18px;
+        font-weight: 700;
+        line-height: 1.25;
+        margin: 0 0 8px;
+        color: #1a1a1a;
+      }
+      .gz-article-img {
+        width: 100%;
+        border-radius: 3px;
+        border: 1px solid #ddd;
+        margin-bottom: 10px;
+        display: block;
+      }
+      .gz-article-body {
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 14px;
+        line-height: 1.65;
+        margin: 0;
+        color: #333;
+      }
+
+      /* Sidebar */
+      .gz-sidebar {
+        padding: 24px 20px;
+        border-left: 1px solid #ccc;
+        background: #f5f2e8;
+      }
+      .gz-sidebar-section {
+        margin-bottom: 20px;
+      }
+      .gz-sidebar-title {
+        font-family: "Playfair Display", Georgia, serif;
+        font-size: 14px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        border-bottom: 2px solid #1a1a1a;
+        padding-bottom: 4px;
+        margin: 0 0 10px;
+        color: #1a1a1a;
+      }
+      .gz-sidebar-item {
+        font-family: Georgia, serif;
+        font-size: 13px;
+        color: #444;
+        padding: 4px 0;
+        border-bottom: 1px solid #e5e0d5;
+      }
+      .gz-sidebar-item strong { color: #1a1a1a; }
+      .gz-sidebar-stat {
+        font-family: "IBM Plex Sans", sans-serif;
+        font-size: 12px;
+        color: #666;
+        padding: 4px 0;
+      }
+      .gz-sidebar-ok { color: #2e7d32; }
+      .gz-sidebar-warn { color: #c77700; }
+
+      /* Footer */
+      .gz-footer {
+        text-align: center;
+        padding: 12px 28px;
+        font-family: Georgia, serif;
+        font-size: 12px;
+        font-style: italic;
+        color: #999;
+        border-top: 1px solid #ccc;
+        background: #f5f2e8;
+      }
+      .gz-footer code {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+        font-style: normal;
+        background: #e8e4d8;
+        padding: 1px 5px;
+        border-radius: 3px;
+      }
+
+      .gz-empty {
+        text-align: center;
+        padding: 60px 28px;
+        font-family: Georgia, serif;
+        font-size: 16px;
+        color: #888;
+      }
+      .gz-empty code {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 13px;
+        background: #e8e4d8;
+        padding: 2px 6px;
+        border-radius: 3px;
       }
     </style>
   </head>
@@ -586,9 +785,7 @@
       </main>
 
       <div class="digest-panel" id="digest-panel">
-        <div class="digest-generated" id="digest-generated"></div>
-        <div class="digest-content" id="digest-content"></div>
-        <div class="digest-hint">Run <code>gp digest</code> in your terminal to refresh.</div>
+        <div id="gazette-root"></div>
       </div>
     </div>
 
@@ -852,81 +1049,141 @@
       tabDashboard.addEventListener("click", () => showTab("dashboard"));
       tabDigest.addEventListener("click", () => showTab("digest"));
 
-      // --- Digest ---
-      function parseMarkdown(md) {
-        const lines = md.split("\n");
-        let html = "";
-        let inList = false;
+      // --- The GitPal Gazette ---
+      function renderGazette(data) {
+        const root = document.getElementById("gazette-root");
+        if (!root) return;
 
-        for (const raw of lines) {
-          const line = raw.trimEnd();
-
-          if (line.startsWith("# ")) {
-            if (inList) { html += "</ul>"; inList = false; }
-            html += `<h1>${escHtml(line.slice(2))}</h1>`;
-            continue;
-          }
-          if (line.startsWith("## ")) {
-            if (inList) { html += "</ul>"; inList = false; }
-            html += `<h2>${escHtml(line.slice(3))}</h2>`;
-            continue;
-          }
-          if (line.startsWith("### ")) {
-            if (inList) { html += "</ul>"; inList = false; }
-            html += `<h3>${escHtml(line.slice(4))}</h3>`;
-            continue;
-          }
-          if (line.startsWith("- ") || line.startsWith("* ")) {
-            if (!inList) { html += "<ul>"; inList = true; }
-            const inner = formatInline(line.slice(2));
-            html += `<li>${inner}</li>`;
-            continue;
-          }
-          if (line.startsWith("*") && line.endsWith("*") && line.length > 2) {
-            if (inList) { html += "</ul>"; inList = false; }
-            html += `<em>${escHtml(line.slice(1, -1))}</em>`;
-            continue;
-          }
-          if (line === "") {
-            if (inList) { html += "</ul>"; inList = false; }
-            continue;
-          }
-          if (inList) { html += "</ul>"; inList = false; }
-          html += `<p>${formatInline(line)}</p>`;
+        // Legacy markdown format
+        if (data.content && !data.articles) {
+          root.innerHTML = '<div class="gz-empty">Run <code>gp digest</code> to generate The GitPal Gazette.</div>';
+          return;
         }
 
-        if (inList) html += "</ul>";
-        return html;
+        if (!data.articles || data.articles.length === 0) {
+          const hasHealth = data.health;
+          if (!hasHealth && !data.uncommitted) {
+            root.innerHTML = '<div class="gz-empty">No edition published yet. Run <code>gp digest</code> to print the first issue.</div>';
+            return;
+          }
+        }
+
+        const featured = data.articles.find(a => a.featured) || data.articles[0];
+        const others = data.articles.filter(a => a !== featured);
+
+        let html = '<div class="gazette">';
+
+        // Masthead
+        html += '<div class="gz-masthead">';
+        html += '<hr class="gz-masthead-rule">';
+        html += '<h1 class="gz-title">' + esc(data.name || 'The GitPal Gazette') + '</h1>';
+        const vol = 'Vol. I';
+        const dateUp = (data.date || '').toUpperCase();
+        const edUp = (data.edition || '').toUpperCase();
+        html += '<div class="gz-dateline">' + vol + ' &middot; ' + esc(dateUp) + ' &middot; ' + esc(edUp) + '</div>';
+        html += '</div>';
+
+        html += '<div class="gz-body-grid">';
+        html += '<div class="gz-main">';
+
+        // Featured article
+        if (featured) {
+          html += '<div class="gz-featured">';
+          html += '<h2 class="gz-featured-headline">' + esc(featured.headline) + '</h2>';
+          html += '<div class="gz-featured-inner">';
+          if (featured.screenshot) {
+            html += '<img class="gz-featured-img" src="/screenshots/' + esc(featured.screenshot) + '" alt="' + esc(featured.project) + '" onerror="this.style.display=\'none\'">';
+          }
+          html += '<div class="gz-featured-text">';
+          html += '<p class="gz-featured-body">' + esc(featured.body) + '</p>';
+          html += '<div class="gz-byline">' + esc(featured.project) + ' &middot; ' + featured.commits + ' commit(s) &middot; +' + featured.linesAdded + ' -' + featured.linesRemoved + '</div>';
+          html += '</div></div></div>';
+        }
+
+        // Article columns
+        if (others.length > 0) {
+          html += '<div class="gz-articles">';
+          for (const article of others) {
+            html += '<div class="gz-article">';
+            html += '<h3 class="gz-article-headline">' + esc(article.headline) + '</h3>';
+            if (article.screenshot) {
+              html += '<img class="gz-article-img" src="/screenshots/' + esc(article.screenshot) + '" alt="' + esc(article.project) + '" onerror="this.style.display=\'none\'">';
+            }
+            html += '<p class="gz-article-body">' + esc(article.body) + '</p>';
+            html += '<div class="gz-byline">' + esc(article.project) + ' &middot; ' + article.commits + ' commit(s) &middot; +' + article.linesAdded + ' -' + article.linesRemoved + '</div>';
+            html += '</div>';
+          }
+          html += '</div>';
+        }
+
+        html += '</div>'; // gz-main
+
+        // Sidebar
+        html += '<div class="gz-sidebar">';
+
+        // Uncommitted work
+        html += '<div class="gz-sidebar-section">';
+        html += '<div class="gz-sidebar-title">On the Editor\'s Desk</div>';
+        if (data.uncommitted && data.uncommitted.length > 0) {
+          for (const u of data.uncommitted) {
+            html += '<div class="gz-sidebar-item"><strong>' + esc(u.name) + '</strong> — ' + u.changes + ' file(s)</div>';
+          }
+        } else {
+          html += '<div class="gz-sidebar-item" style="color:#888;font-style:italic">All clear — nothing uncommitted.</div>';
+        }
+        html += '</div>';
+
+        // Infrastructure
+        html += '<div class="gz-sidebar-section">';
+        html += '<div class="gz-sidebar-title">Infrastructure Report</div>';
+        if (data.health) {
+          const c = data.health.containers;
+          if (c.unhealthy > 0) {
+            html += '<div class="gz-sidebar-stat gz-sidebar-warn">' + c.unhealthy + ' unhealthy of ' + c.total + ' containers</div>';
+            for (const name of (c.names || [])) {
+              html += '<div class="gz-sidebar-item">' + esc(name) + '</div>';
+            }
+          } else {
+            html += '<div class="gz-sidebar-stat gz-sidebar-ok">' + c.total + ' containers — all healthy</div>';
+          }
+          const d = data.health.disk;
+          if (d) {
+            const dClass = d.percent >= 90 ? 'gz-sidebar-warn' : '';
+            html += '<div class="gz-sidebar-stat ' + dClass + '">Disk: ' + esc(d.text) + '</div>';
+          }
+        }
+        html += '</div>';
+
+        // Stats
+        if (data.totalCommits) {
+          html += '<div class="gz-sidebar-section">';
+          html += '<div class="gz-sidebar-title">By the Numbers</div>';
+          html += '<div class="gz-sidebar-stat">' + data.totalCommits + ' commits across ' + data.totalProjects + ' projects</div>';
+          html += '</div>';
+        }
+
+        html += '</div>'; // gz-sidebar
+        html += '</div>'; // gz-body-grid
+
+        // Footer
+        html += '<div class="gz-footer">Generated at ' + esc(data.generated || '') + ' &middot; Run <code>gp digest</code> to refresh</div>';
+
+        html += '</div>'; // gazette
+        root.innerHTML = html;
       }
 
-      function escHtml(str) {
-        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      }
-
-      function formatInline(str) {
-        // bold: **text**
-        str = str.replace(/\*\*(.+?)\*\*/g, (_, t) => `<strong>${escHtml(t)}</strong>`);
-        // italic: *text*
-        str = str.replace(/\*(.+?)\*/g, (_, t) => `<em>${escHtml(t)}</em>`);
-        // checkmarks / warnings
-        str = str.replace(/✓/g, '<span class="digest-ok">✓</span>');
-        str = str.replace(/⚠/g, '<span class="digest-warn">⚠</span>');
-        // escape remaining unhandled chars
-        return str;
+      function esc(s) {
+        if (!s) return '';
+        return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
       }
 
       async function refreshDigest() {
         try {
           const data = await fetchJson("/api/digest");
-          if (!data.content) {
-            digestContent.innerHTML = '<p class="empty-state">No digest found. Run <code>gp digest</code> to generate one.</p>';
-            digestGenerated.textContent = "";
-            return;
-          }
-          digestContent.innerHTML = parseMarkdown(data.content);
-          digestGenerated.textContent = data.generated ? `Generated: ${data.generated}` : "";
+          renderGazette(data);
         } catch {
-          digestContent.innerHTML = '<p class="empty-state">Could not load digest.</p>';
+          const root = document.getElementById("gazette-root");
+          if (root) root.innerHTML = '<div class="gz-empty">Could not load the Gazette.</div>';
         }
       }
 
