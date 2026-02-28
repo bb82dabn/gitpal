@@ -1058,10 +1058,14 @@
       let currentEdition = "morning";
       let currentDate = null; // null = today/current
       const pdfBtn = document.getElementById("pdf-download-btn");
+      let archivePdfs = {}; // { 'YYYY-MM-DD': ['morning','noon',...] }
 
       function updatePdfBtn() {
-        if (!currentDate) { pdfBtn.style.display = 'none'; return; }
-        const url = `/api/digest/pdf?date=${encodeURIComponent(currentDate)}&edition=${encodeURIComponent(currentEdition)}`;
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const date = currentDate || todayStr;
+        const pdfs = archivePdfs[date] || [];
+        if (!pdfs.includes(currentEdition)) { pdfBtn.style.display = 'none'; return; }
+        const url = `/api/digest/pdf?date=${encodeURIComponent(date)}&edition=${encodeURIComponent(currentEdition)}`;
         pdfBtn.href = url;
         pdfBtn.style.display = '';
       }
@@ -1105,6 +1109,7 @@
         const list = document.getElementById("archive-list");
         try {
           const days = await fetchJson("/api/digest/archive");
+          archivePdfs = {}; days.forEach(d => { if (d.pdfs) archivePdfs[d.date] = d.pdfs; });
           if (!days.length) {
             list.innerHTML = '<button class="archive-today-btn" id="archive-today-btn" type="button">→ Today</button><div class="archive-empty">No archive yet.</div>';
             document.getElementById("archive-today-btn").addEventListener("click", () => { currentDate = null; refreshDigest(); });
@@ -1143,6 +1148,7 @@
               refreshDigest();
             });
           });
+          updatePdfBtn();
         } catch {
           list.innerHTML = '<button class="archive-today-btn" id="archive-today-btn" type="button">→ Today</button><div class="archive-empty">Could not load archive.</div>';
           document.getElementById("archive-today-btn").addEventListener("click", () => { currentDate = null; refreshDigest(); });
