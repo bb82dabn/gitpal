@@ -1,4 +1,16 @@
-# GitPal
+```
+            ___
+         .-'   '-.
+        / .---. . \
+       | / o o \ |         ╔═══════════════════════╗
+       | \  ^  / |         ║      G i t P a l      ║
+        \ '---' /          ╚═══════════════════════╝
+     .--'`.___.`'--.
+    / / |\   /| \ \ \      git on autopilot
+   / /  | \ / |  \ \ \
+  / /   |  V  |   \ \ \
+ '-'    '-----'    '-'-'
+```
 
 Git on autopilot. Push, commit, watch, and digest — without thinking about it.
 

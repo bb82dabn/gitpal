@@ -257,6 +257,15 @@ async function handleRequest(req: Request): Promise<Response> {
     return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
   }
 
+  if (pathname === "/logo.png" && req.method === "GET") {
+    const shareLogo = join(HOME, ".local", "share", "gitpal", "logo.png");
+    const srcLogo = join(HOME, "projects", "gitpal", "assets", "logo.png");
+    const logoPath = existsSync(shareLogo) ? shareLogo : srcLogo;
+    if (existsSync(logoPath)) return new Response(Bun.file(logoPath), { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=86400" } });
+    return new Response("Not found", { status: 404 });
+  }
+
+
   if (pathname === "/api/projects" && req.method === "GET") {
     const projects = await listProjects();
     return jsonResponse(projects);
