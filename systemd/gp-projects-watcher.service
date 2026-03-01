@@ -7,7 +7,7 @@ Type=simple
 ExecStart=%h/.local/bin/gp-projects-watcher
 Restart=on-failure
 RestartSec=10
-Environment=HOME=%h
+Environment=HOME=%h PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
 StandardOutput=null
 StandardError=journal
 

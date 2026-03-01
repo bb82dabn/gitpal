@@ -1,5 +1,6 @@
 import { join } from "node:path";
-import { homedir } from "node:os";
+import { hostname, homedir } from "node:os";
+import { randomUUID } from "node:crypto";
 
 export interface GitPalConfig {
   watch_patterns: string[];
@@ -12,13 +13,19 @@ export interface GitPalConfig {
   ai_provider: "openai" | "ollama";
   github_username: string;
   auto_push: boolean;
+  /** Unique identifier for this machine (generated on first run) */
+  machine_id: string;
+  /** Human-friendly machine name (defaults to hostname) */
+  machine_name: string;
+  /** How often (seconds) to fetch+pull from remote in the watcher sync loop */
+  sync_interval_seconds: number;
 }
 
 const CONFIG_DIR = join(homedir(), ".gitpal");
 const CONFIG_PATH = join(CONFIG_DIR, "config.json");
 const PROMPTED_PATH = join(CONFIG_DIR, "prompted.json");
 
-const DEFAULTS: GitPalConfig = {
+const DEFAULTS: Omit<GitPalConfig, "machine_id" | "machine_name"> & { machine_id: string; machine_name: string } = {
   watch_patterns: [],
   exclude_patterns: ["node_modules", ".git", "dist", "build", ".cache"],
   idle_seconds: 120,
@@ -29,6 +36,9 @@ const DEFAULTS: GitPalConfig = {
   ai_provider: "openai",
   github_username: "bb82dabn",
   auto_push: false,
+  machine_id: "",
+  machine_name: "",
+  sync_interval_seconds: 120,
 };
 
 export async function ensureConfigDir(): Promise<void> {
@@ -38,12 +48,27 @@ export async function ensureConfigDir(): Promise<void> {
 export async function loadConfig(): Promise<GitPalConfig> {
   await ensureConfigDir();
   const file = Bun.file(CONFIG_PATH);
-  if (!(await file.exists())) {
-    await Bun.write(CONFIG_PATH, JSON.stringify(DEFAULTS, null, 2));
-    return { ...DEFAULTS };
+  let raw: Partial<GitPalConfig> = {};
+  if (await file.exists()) {
+    raw = await file.json() as Partial<GitPalConfig>;
   }
-  const raw = await file.json() as Partial<GitPalConfig>;
-  return { ...DEFAULTS, ...raw };
+  const config = { ...DEFAULTS, ...raw };
+
+  // Auto-generate machine identity on first load
+  let dirty = false;
+  if (!config.machine_id) {
+    config.machine_id = randomUUID().slice(0, 8);
+    dirty = true;
+  }
+  if (!config.machine_name) {
+    config.machine_name = hostname();
+    dirty = true;
+  }
+  if (dirty) {
+    await Bun.write(CONFIG_PATH, JSON.stringify(config, null, 2));
+  }
+
+  return config;
 }
 
 export async function saveConfig(patch: Partial<GitPalConfig>): Promise<void> {
@@ -87,4 +112,10 @@ export async function markPrompted(dir: string): Promise<void> {
     list.push(dir);
     await Bun.write(PROMPTED_PATH, JSON.stringify(list, null, 2));
   }
+}
+
+/** Returns the machine tag string for commit trailers, e.g. 'brians-laptop-a1b2c3d4' */
+export async function getMachineTag(): Promise<string> {
+  const config = await loadConfig();
+  return `${config.machine_name}-${config.machine_id}`;
 }

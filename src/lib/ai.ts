@@ -1,4 +1,4 @@
-import { loadConfig, type GitPalConfig } from "./config.ts";
+import { loadConfig, getMachineTag, type GitPalConfig } from "./config.ts";
 
 const MAX_DIFF_CHARS = 4000;
 
@@ -243,7 +243,9 @@ export async function generateCommitMessage(diff: string): Promise<string> {
 
   // Strip wrapping quotes if present
   const cleaned = message.replace(/^["']|["']$/g, "");
-  return cleaned.length > 72 ? cleaned.substring(0, 72) : cleaned;
+  const subject = cleaned.length > 72 ? cleaned.substring(0, 72) : cleaned;
+  const machineTag = await getMachineTag();
+  return `${subject}\n\nMachine: ${machineTag}`;
 }
 
 export async function isOllamaRunning(): Promise<boolean> {

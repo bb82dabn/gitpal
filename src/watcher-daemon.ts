@@ -15,11 +15,28 @@ import chokidar from "chokidar";
 import { join, resolve } from "node:path";
 import { homedir } from "node:os";
 import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync, appendFileSync } from "node:fs";
-import { isGitRepo, gitStatus, gitAdd, gitCommit, gitDiff, gitPush, hasRemote } from "./lib/git.ts";
+import {
+  isGitRepo,
+  gitStatus,
+  gitAdd,
+  gitCommit,
+  gitDiff,
+  gitPush,
+  hasRemote,
+  gitFetch,
+  gitCurrentBranch,
+  getBranchStatus,
+  gitPullRebase,
+  gitRebaseAbort,
+  gitCreateBranch,
+  gitResetHardToRef,
+  gitStashPush,
+  gitStashPop,
+} from "./lib/git.ts";
 import { generateCommitMessage } from "./lib/ai.ts";
 import { refreshContext } from "./lib/context.ts";
 import { writeReadme, generateRepoMeta, applyRepoMeta } from "./lib/readme.ts";
-import { loadConfig } from "./lib/config.ts";
+import { loadConfig, getMachineTag } from "./lib/config.ts";
 
 const dir = resolve(process.argv[2] ?? process.cwd());
 let config = await loadConfig(); // module-level so doCommit can access it
@@ -185,6 +202,7 @@ async function main() {
 
   config = await loadConfig(); // reload in case it changed on disk
   const baseIdleMs = config.idle_seconds * 1000;
+  const syncIntervalMs = config.sync_interval_seconds * 1000;
 
   // State
   let lastChangeTime  = 0;
@@ -198,6 +216,73 @@ async function main() {
   let alertedBroken   = false;
   let lastBuildCheck  = 0;
   let lastQueueDrain  = 0;  // for periodic offline-queue drain
+  let lastSyncCheck   = 0;
+  let lastSyncLogTime = 0;
+
+  async function syncFromRemote(projectDir: string): Promise<void> {
+    if (!(await hasRemote(projectDir))) return;
+
+    log("Sync: fetching from origin...");
+    const fetched = await gitFetch(projectDir);
+    if (!fetched) return;
+
+    const branchStatus = await getBranchStatus(projectDir);
+    const branch = branchStatus.branch || await gitCurrentBranch(projectDir);
+
+    if (branchStatus.behind === 0) {
+      const now = Date.now();
+      if (now - lastSyncLogTime > 600_000) {
+        log("Sync: up to date");
+        lastSyncLogTime = now;
+      }
+      return;
+    }
+
+    log(`Sync: ${branchStatus.behind} commit(s) behind — pulling...`);
+
+    if (branchStatus.behind > 0 && branchStatus.ahead === 0) {
+      await gitPullRebase(projectDir);
+      return;
+    }
+
+    if (!(branchStatus.diverged && branchStatus.behind > 0 && branchStatus.ahead > 0)) {
+      return;
+    }
+
+    const status = await gitStatus(projectDir);
+    let stashed = false;
+    if (status.hasChanges) {
+      stashed = await gitStashPush(projectDir, "gp sync auto-stash");
+    }
+
+    const pullResult = await gitPullRebase(projectDir);
+    if (pullResult.ok) {
+      if (stashed) {
+        const popped = await gitStashPop(projectDir);
+        if (!popped) log("Sync: stash preserved");
+      }
+      return;
+    }
+
+    if (!pullResult.conflicted) {
+      return;
+    }
+
+    await gitRebaseAbort(projectDir);
+    const machineName = config.machine_name || (await getMachineTag()).replace(/-[^-]+$/, "");
+    const stamp = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 19);
+    const conflictBranchName = `${machineName}-conflict-${stamp}`;
+    log(`Sync: conflict during rebase — saving to branch ${conflictBranchName}`);
+    await gitCreateBranch(projectDir, conflictBranchName);
+    await gitResetHardToRef(projectDir, `origin/${branch}`);
+
+    if (stashed) {
+      const popped = await gitStashPop(projectDir);
+      if (!popped) log("Sync: stash preserved after conflict");
+    }
+
+    log(`Sync conflict: local commits saved to branch ${conflictBranchName}`);
+  }
 
   log(`Watcher started. Base idle: ${config.idle_seconds}s. Smart triggers: burst, build-pass, broken-state.`);
 
@@ -293,6 +378,15 @@ async function main() {
     if (now - lastQueueDrain > 120_000) {
       lastQueueDrain = now;
       drainQueue().catch(() => { /* silent */ });
+    }
+
+    if (now - lastSyncCheck > syncIntervalMs) {
+      lastSyncCheck = now;
+      try {
+        await syncFromRemote(dir);
+      } catch (err) {
+        log(`Sync failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
 
     // ── Trigger 2: Burst commit ──────────────────────────────────────────────

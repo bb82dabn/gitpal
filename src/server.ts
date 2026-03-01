@@ -4,6 +4,8 @@ import { join } from "node:path";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { gitDiff, gitLog, gitStatus, hasRemote, isGitRepo } from "./lib/git.ts";
 import { loadConfig, type GitPalConfig } from "./lib/config.ts";
+import { loadManifest, saveManifest, addToManifest, removeFromManifest, listGitHubRepos, type SyncManifest } from "./lib/sync-manifest.ts";
+import { startWatcher, isWatcherRunning as isWatcherRunningLib } from "./lib/watcher.ts";
 
 type DoctorStatus = "pass" | "warn" | "fail";
 
@@ -418,6 +420,85 @@ async function handleRequest(req: Request): Promise<Response> {
     const lines = content.split("\n");
     const generated = lines[1]?.replace(/^\*Generated at (.+)\*$/, "$1").trim() ?? null;
     return jsonResponse({ content, generated });
+  }
+
+  // ── Multi-machine sync APIs ──────────────────────────────────────────────
+
+  if (pathname === "/api/github-repos" && req.method === "GET") {
+    const repos = await listGitHubRepos();
+    const manifest = await loadManifest();
+    const syncedNames = new Set(manifest.synced_repos.map(r => r.name));
+    const enriched = repos.map(r => ({
+      ...r,
+      synced: syncedNames.has(r.fullName),
+    }));
+    return jsonResponse(enriched);
+  }
+
+  if (pathname === "/api/sync-manifest" && req.method === "GET") {
+    const manifest = await loadManifest();
+    return jsonResponse(manifest);
+  }
+
+  if (pathname === "/api/sync-manifest" && req.method === "POST") {
+    let body: { action: string; repoName?: string; repoUrl?: string; localPath?: string };
+    try {
+      body = await req.json() as typeof body;
+    } catch {
+      return jsonResponse({ ok: false, error: "Invalid JSON" }, 400);
+    }
+
+    if (body.action === "add" && body.repoName && body.repoUrl && body.localPath) {
+      await addToManifest({ name: body.repoName, url: body.repoUrl, local_path: body.localPath });
+      return jsonResponse({ ok: true });
+    }
+
+    if (body.action === "remove" && body.repoName) {
+      await removeFromManifest(body.repoName);
+      return jsonResponse({ ok: true });
+    }
+
+    return jsonResponse({ ok: false, error: "Invalid action or missing fields" }, 400);
+  }
+
+  if (pathname === "/api/clone" && req.method === "POST") {
+    let body: { repo: string };
+    try {
+      body = await req.json() as typeof body;
+    } catch {
+      return jsonResponse({ ok: false, error: "Invalid JSON" }, 400);
+    }
+
+    if (!body.repo) return jsonResponse({ ok: false, error: "Missing repo" }, 400);
+
+    const config = await loadConfig();
+    const roots = getWatchRoots(config);
+    const projectsRoot = roots[0] ?? join(HOME, "projects");
+    const repoName = body.repo.split("/").pop() ?? body.repo;
+    const destDir = join(projectsRoot, repoName);
+
+    if (existsSync(destDir)) {
+      return jsonResponse({ ok: true, message: "Already exists", path: destDir });
+    }
+
+    const cloneResult = await Bun.$`gh repo clone ${body.repo} ${destDir}`.quiet().nothrow();
+    if (cloneResult.exitCode !== 0) {
+      return jsonResponse({ ok: false, error: cloneResult.stderr.toString().trim() }, 500);
+    }
+
+    // Start watcher
+    if (!isWatcherRunningLib(destDir)) {
+      await startWatcher(destDir);
+    }
+
+    // Register in manifest
+    await addToManifest({
+      name: body.repo,
+      url: `https://github.com/${body.repo}.git`,
+      local_path: destDir,
+    });
+
+    return jsonResponse({ ok: true, path: destDir });
   }
 
   return new Response("Not found", { status: 404 });

@@ -147,3 +147,101 @@ export async function countFiles(dir: string): Promise<number> {
   const result = await Bun.$`ls -1 ${dir}`.quiet().nothrow();
   return result.stdout.toString().trim().split("\n").filter(Boolean).length;
 }
+
+// ── Sync operations (multi-machine) ──────────────────────────────────────
+
+export interface BranchStatus {
+  branch: string;
+  ahead: number;
+  behind: number;
+  diverged: boolean;
+}
+
+/** Get the current branch name. Falls back to 'main' if detached. */
+export async function gitCurrentBranch(dir: string): Promise<string> {
+  const result = await Bun.$`git -C ${dir} branch --show-current`.quiet().nothrow();
+  return result.stdout.toString().trim() || "main";
+}
+
+/** Fetch from origin. Returns true on success, false on network error. */
+export async function gitFetch(dir: string): Promise<boolean> {
+  const result = await Bun.$`git -C ${dir} fetch origin`.quiet().nothrow();
+  return result.exitCode === 0;
+}
+
+/**
+ * Check how far ahead/behind the current branch is relative to origin.
+ * Returns { branch, ahead, behind, diverged }.
+ * If the remote tracking branch doesn't exist yet, returns zeroes.
+ */
+export async function getBranchStatus(dir: string): Promise<BranchStatus> {
+  const branch = await gitCurrentBranch(dir);
+  const remote = `origin/${branch}`;
+
+  // Check if remote tracking branch exists
+  const refCheck = await Bun.$`git -C ${dir} rev-parse --verify ${remote}`.quiet().nothrow();
+  if (refCheck.exitCode !== 0) {
+    return { branch, ahead: 0, behind: 0, diverged: false };
+  }
+
+  const result = await Bun.$`git -C ${dir} rev-list --left-right --count HEAD...${remote}`.quiet().nothrow();
+  if (result.exitCode !== 0) {
+    return { branch, ahead: 0, behind: 0, diverged: false };
+  }
+
+  const parts = result.stdout.toString().trim().split(/\s+/);
+  const ahead = parseInt(parts[0] ?? "0", 10) || 0;
+  const behind = parseInt(parts[1] ?? "0", 10) || 0;
+
+  return { branch, ahead, behind, diverged: ahead > 0 && behind > 0 };
+}
+
+/**
+ * Pull with rebase from origin.
+ * Returns:
+ *   { ok: true }                — rebase succeeded (or already up to date)
+ *   { ok: false, conflicted: true }  — rebase hit conflicts (caller should abort)
+ *   { ok: false, conflicted: false } — other failure (network, etc.)
+ */
+export async function gitPullRebase(dir: string): Promise<{ ok: boolean; conflicted: boolean }> {
+  const branch = await gitCurrentBranch(dir);
+  const result = await Bun.$`git -C ${dir} pull --rebase origin ${branch}`.quiet().nothrow();
+
+  if (result.exitCode === 0) {
+    return { ok: true, conflicted: false };
+  }
+
+  const stderr = result.stderr.toString();
+  const isConflict = stderr.includes("CONFLICT") || stderr.includes("could not apply") || stderr.includes("Failed to merge");
+  return { ok: false, conflicted: isConflict };
+}
+
+/** Abort an in-progress rebase. */
+export async function gitRebaseAbort(dir: string): Promise<void> {
+  await Bun.$`git -C ${dir} rebase --abort`.quiet().nothrow();
+}
+
+/** Create a new branch at the current HEAD. Does NOT switch to it. */
+export async function gitCreateBranch(dir: string, name: string): Promise<boolean> {
+  const result = await Bun.$`git -C ${dir} branch ${name}`.quiet().nothrow();
+  return result.exitCode === 0;
+}
+
+/** Hard-reset current branch to a ref (e.g. 'origin/main'). */
+export async function gitResetHardToRef(dir: string, ref: string): Promise<void> {
+  await Bun.$`git -C ${dir} reset --hard ${ref}`.quiet();
+}
+
+/** Stash working tree changes. Returns true if something was stashed. */
+export async function gitStashPush(dir: string, message: string): Promise<boolean> {
+  const result = await Bun.$`git -C ${dir} stash push -u -m ${message}`.quiet().nothrow();
+  if (result.exitCode !== 0) return false;
+  // 'No local changes to save' means nothing was stashed
+  return !result.stdout.toString().includes("No local changes");
+}
+
+/** Pop the most recent stash. Returns true on success, false on conflict/error. */
+export async function gitStashPop(dir: string): Promise<boolean> {
+  const result = await Bun.$`git -C ${dir} stash pop`.quiet().nothrow();
+  return result.exitCode === 0;
+}

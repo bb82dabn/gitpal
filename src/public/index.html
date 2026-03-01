@@ -758,6 +758,190 @@
       .gz-joke-byline { font-style: italic; color: #999; }
 @media (max-width: 600px) { .gz-joke-article { grid-template-columns: 1fr; } .gz-joke-img { width: 100%; height: auto; } }
 
+      /* ── Sync tab ── */
+      .sync-panel { display: none; }
+      .sync-panel.visible { display: block; }
+
+      .sync-machine-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        margin-bottom: 16px;
+      }
+
+      .sync-machine-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .sync-machine-label {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-3);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .sync-machine-name {
+        font-family: var(--mono);
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+      }
+
+      .sync-machine-id {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text-3);
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 2px 6px;
+      }
+
+      .sync-status-summary {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--accent);
+      }
+
+      .sync-repos-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 10px;
+      }
+
+      .sync-repo-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        transition: border-color 0.15s, box-shadow 0.15s;
+      }
+
+      .sync-repo-card:hover {
+        border-color: var(--border-2);
+        box-shadow: var(--shadow-sm);
+      }
+
+      .sync-repo-card.synced {
+        border-color: rgba(34,197,94,0.3);
+      }
+
+      .sync-repo-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .sync-repo-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text);
+        letter-spacing: -0.01em;
+        word-break: break-all;
+      }
+
+      .sync-repo-meta {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-3);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .sync-badge-synced {
+        font-family: var(--mono);
+        font-size: 10px;
+        font-weight: 500;
+        padding: 3px 7px;
+        border-radius: 999px;
+        background: var(--accent-dim);
+        color: var(--accent);
+        border: 1px solid rgba(34,197,94,0.25);
+      }
+
+      .sync-badge-private {
+        font-family: var(--mono);
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        background: var(--surface-2);
+        color: var(--text-3);
+        border: 1px solid var(--border);
+      }
+
+      .sync-repo-actions {
+        display: flex;
+        gap: 6px;
+      }
+
+      .sync-action-btn {
+        flex: 1;
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 500;
+        padding: 6px 10px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        background: var(--surface-2);
+        color: var(--text-2);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        transition: border-color 0.15s, color 0.15s, background 0.15s;
+      }
+
+      .sync-action-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: var(--accent-dim);
+      }
+
+      .sync-action-btn.danger:hover {
+        border-color: var(--danger);
+        color: var(--danger);
+        background: var(--danger-dim);
+      }
+
+      .sync-action-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .sync-action-btn .spinner {
+        width: 10px;
+        height: 10px;
+        border: 1.5px solid rgba(34,197,94,0.3);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+        display: none;
+      }
+
+      .sync-action-btn.loading .spinner { display: inline-block; }
+      .sync-action-btn.loading span:first-child { display: none; }
+
+      .sync-empty {
+        font-size: 13px;
+        color: var(--text-3);
+        padding: 40px 16px;
+        text-align: center;
+        font-family: var(--mono);
+      }
+
       /* ── Responsive ── */
       @media (max-width: 900px) {
         .main-grid { grid-template-columns: 1fr; }
@@ -787,6 +971,7 @@
       <nav class="nav">
         <button class="tab-btn active" id="tab-dashboard" type="button">Dashboard</button>
         <button class="tab-btn" id="tab-digest" type="button">Digest</button>
+        <button class="tab-btn" id="tab-sync" type="button">Sync</button>
       </nav>
 
       <main class="main-grid">
@@ -838,6 +1023,20 @@
             </div>
             <div id="gazette-root"></div>
           </div>
+        </div>
+      </div>
+
+      <div class="sync-panel" id="sync-panel">
+        <div class="sync-machine-bar" id="sync-machine-bar">
+          <div class="sync-machine-info">
+            <span class="sync-machine-label">Machine</span>
+            <span class="sync-machine-name" id="sync-machine-name">--</span>
+            <span class="sync-machine-id" id="sync-machine-id">--</span>
+          </div>
+          <span class="sync-status-summary" id="sync-status-summary">-- synced</span>
+        </div>
+        <div class="sync-repos-grid" id="sync-repos-grid">
+          <div class="sync-empty">Loading GitHub repos…</div>
         </div>
       </div>
 
@@ -1047,8 +1246,10 @@
       // Tab switching
       const tabDashboard = document.getElementById("tab-dashboard");
       const tabDigest = document.getElementById("tab-digest");
+      const tabSync = document.getElementById("tab-sync");
       const mainGrid = document.querySelector(".main-grid");
       const digestPanel = document.getElementById("digest-panel");
+      const syncPanel = document.getElementById("sync-panel");
       let currentEdition = (() => { const h = new Date().getHours(); if (h >= 18) return 'evening'; if (h >= 12) return 'noon'; if (h >= 6) return 'morning'; return 'midnight'; })();
       let currentDate = null; // null = today/current
       const pdfBtn = document.getElementById("pdf-download-btn");
@@ -1065,15 +1266,14 @@
       }
 
       function showTab(name) {
-        const isDashboard = name === "dashboard";
-        tabDashboard.classList.toggle("active", isDashboard);
-        tabDigest.classList.toggle("active", !isDashboard);
-        mainGrid.style.display = isDashboard ? "" : "none";
-        digestPanel.classList.toggle("visible", !isDashboard);
-        if (!isDashboard) {
-          refreshDigest();
-          loadArchive();
-        }
+        tabDashboard.classList.toggle("active", name === "dashboard");
+        tabDigest.classList.toggle("active", name === "digest");
+        tabSync.classList.toggle("active", name === "sync");
+        mainGrid.style.display = name === "dashboard" ? "" : "none";
+        digestPanel.classList.toggle("visible", name === "digest");
+        syncPanel.classList.toggle("visible", name === "sync");
+        if (name === "digest") { refreshDigest(); loadArchive(); }
+        if (name === "sync") { refreshSync(); }
       }
 
       // Set active edition button to match currentEdition
@@ -1081,6 +1281,7 @@
 
       tabDashboard.addEventListener("click", () => showTab("dashboard"));
       tabDigest.addEventListener("click", () => showTab("digest"));
+      tabSync.addEventListener("click", () => showTab("sync"));
 
       // Edition nav
       document.getElementById("edition-nav").addEventListener("click", (e) => {
@@ -1305,6 +1506,124 @@
           renderGazette(await fetchJson(`/api/digest?${params}`));
         } catch {
           if (root) root.innerHTML = '<div class="gz-empty">Could not load the Gazette.</div>';
+        }
+      }
+
+      // ── Sync tab ──────────────────────────────────────────────────
+      const syncReposGrid = document.getElementById("sync-repos-grid");
+      const syncMachineName = document.getElementById("sync-machine-name");
+      const syncMachineId = document.getElementById("sync-machine-id");
+      const syncStatusSummary = document.getElementById("sync-status-summary");
+      let syncLoading = false;
+
+      function renderSyncRepos(repos, manifest) {
+        syncReposGrid.replaceChildren();
+        if (!repos.length) {
+          syncReposGrid.appendChild(createElement("div", "sync-empty", "No GitHub repos found. Is gh CLI authenticated?"));
+          return;
+        }
+
+        // Show synced repos first, then available
+        const sorted = [...repos].sort((a, b) => {
+          if (a.synced && !b.synced) return -1;
+          if (!a.synced && b.synced) return 1;
+          return a.name.localeCompare(b.name);
+        });
+
+        for (const repo of sorted) {
+          const card = createElement("div", "sync-repo-card" + (repo.synced ? " synced" : ""));
+
+          const top = createElement("div", "sync-repo-top");
+          const name = createElement("div", "sync-repo-name", repo.name);
+          const badges = createElement("div", "");
+          badges.style.display = "flex";
+          badges.style.gap = "4px";
+          badges.style.alignItems = "center";
+          if (repo.synced) {
+            badges.appendChild(createElement("span", "sync-badge-synced", "synced"));
+          }
+          if (repo.isPrivate) {
+            badges.appendChild(createElement("span", "sync-badge-private", "private"));
+          }
+          top.append(name, badges);
+
+          const meta = createElement("div", "sync-repo-meta");
+          meta.textContent = repo.fullName;
+          if (repo.pushedAt) {
+            const pushed = createElement("span", "");
+            const d = new Date(repo.pushedAt);
+            pushed.textContent = "pushed " + d.toLocaleDateString();
+            meta.appendChild(pushed);
+          }
+
+          const actions = createElement("div", "sync-repo-actions");
+          if (repo.synced) {
+            const removeBtn = createElement("button", "sync-action-btn danger");
+            removeBtn.type = "button";
+            removeBtn.innerHTML = '<span>remove</span><span class="spinner"></span>';
+            removeBtn.addEventListener("click", () => handleSyncAction(removeBtn, "remove", repo));
+            actions.appendChild(removeBtn);
+          } else {
+            const cloneBtn = createElement("button", "sync-action-btn");
+            cloneBtn.type = "button";
+            cloneBtn.innerHTML = '<span>clone &amp; sync</span><span class="spinner"></span>';
+            cloneBtn.addEventListener("click", () => handleSyncAction(cloneBtn, "clone", repo));
+            actions.appendChild(cloneBtn);
+          }
+
+          card.append(top, meta, actions);
+          syncReposGrid.appendChild(card);
+        }
+      }
+
+      async function handleSyncAction(button, action, repo) {
+        button.classList.add("loading");
+        button.disabled = true;
+        try {
+          if (action === "clone") {
+            const res = await fetch("/api/clone", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ repo: repo.fullName }),
+            });
+            const data = await res.json();
+            if (!data.ok && !data.path) {
+              console.error("Clone failed:", data.error);
+            }
+          } else if (action === "remove") {
+            await fetch("/api/sync-manifest", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "remove", repoName: repo.fullName }),
+            });
+          }
+          setTimeout(refreshSync, 500);
+        } catch (err) {
+          console.error("Sync action failed:", err);
+        } finally {
+          button.classList.remove("loading");
+          button.disabled = false;
+        }
+      }
+
+      async function refreshSync() {
+        if (syncLoading) return;
+        syncLoading = true;
+        try {
+          const [repos, manifest] = await Promise.all([
+            fetchJson("/api/github-repos"),
+            fetchJson("/api/sync-manifest"),
+          ]);
+          syncMachineName.textContent = manifest.machine_name || "--";
+          syncMachineId.textContent = manifest.machine_id || "--";
+          const syncedCount = manifest.synced_repos ? manifest.synced_repos.length : 0;
+          syncStatusSummary.textContent = syncedCount + " synced";
+          renderSyncRepos(repos, manifest);
+        } catch (err) {
+          syncReposGrid.innerHTML = '<div class="sync-empty">Failed to load repos. Is gh CLI installed?</div>';
+          console.error("Sync refresh failed:", err);
+        } finally {
+          syncLoading = false;
         }
       }
 

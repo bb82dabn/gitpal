@@ -28,6 +28,7 @@ import { runOpen } from "./commands/open.ts";
 import { runDiff } from "./commands/diff.ts";
 import { runRecent } from "./commands/recent.ts";
 import { runClean } from "./commands/clean.ts";
+import { runClone } from "./commands/clone.ts";
 import { runMcp } from "./mcp.ts";
 
 const [, , cmd, ...args] = process.argv;
@@ -163,8 +164,14 @@ async function main(): Promise<void> {
       break;
     }
 
-    case "sync":
-      await runSync(process.cwd());
+    case "sync": {
+      const syncAll = args.includes("--all") || args.includes("-a");
+      await runSync(process.cwd(), syncAll);
+      break;
+    }
+
+    case "clone":
+      await runClone(args[0]);
       break;
 
     case "mcp":
@@ -216,7 +223,8 @@ async function main(): Promise<void> {
       console.log("  gp push                          Commit + push to GitHub");
       console.log("  gp push --yes                    No confirmation prompt");
       console.log("  gp push --yes --quiet             Silent (for automation)");
-      console.log("  gp sync                          Pull latest from GitHub");
+      console.log("  gp sync                          Pull latest from GitHub (rebase)");
+      console.log("  gp sync --all                    Sync all watched projects");
       console.log("  gp diff                          Show current uncommitted changes");
       console.log("  gp snapshot                      Save locally without pushing");
       console.log("  gp undo                          Restore a previous version");
@@ -233,6 +241,7 @@ async function main(): Promise<void> {
       console.log("  gp context                       Project context cheat sheet");
       console.log("  gp readme                        Regenerate README + GitHub metadata");
       console.log("  gp init                          Connect project to GitHub");
+      console.log("  gp clone <repo>                  Clone a GitHub repo + start syncing");
       console.log("  gp setup                         First-time setup");
       console.log("  gp watch projects                Watch ~/projects for new folders");
       console.log("  gp mcp                           Start MCP server for AI assistants");
