@@ -126,51 +126,12 @@ async function callOpenAI(config: GitPalConfig, prompt: string, maxTokens = 80):
   }
 }
 
-// ── Ollama (legacy fallback) ──────────────────────────────────────────────
-
-interface OllamaResponse {
-  response?: string;
-}
-
-async function callOllama(config: GitPalConfig, prompt: string): Promise<string | null> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15_000);
-
-  try {
-    const response = await fetch(`${config.ollama_url}/api/generate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: config.ollama_model,
-        prompt,
-        stream: false,
-        options: { temperature: 0.3, num_predict: 80 },
-      }),
-    });
-
-    clearTimeout(timeout);
-    if (!response.ok) return null;
-
-    const data = await response.json() as OllamaResponse;
-    return data.response?.trim() ?? null;
-  } catch {
-    clearTimeout(timeout);
-    return null;
-  }
-}
-
 // ── Unified AI call ───────────────────────────────────────────────────────
 
 /** Send a prompt to the configured AI provider. Returns null on failure. */
 export async function aiComplete(prompt: string, maxTokens = 80): Promise<string | null> {
   const config = await loadConfig();
-
-  if (config.ai_provider === "openai" && config.openai_api_key) {
-    return callOpenAI(config, prompt, maxTokens);
-  }
-
-  return callOllama(config, prompt);
+  return callOpenAI(config, prompt, maxTokens);
 }
 
 // ── DALL-E image generation ───────────────────────────────────────────────
@@ -248,37 +209,20 @@ export async function generateCommitMessage(diff: string): Promise<string> {
   return `${subject}\n\nMachine: ${machineTag}`;
 }
 
-export async function isOllamaRunning(): Promise<boolean> {
+/** Check if the configured AI provider is reachable */
+export async function isAIAvailable(): Promise<boolean> {
   const config = await loadConfig();
+  if (!config.openai_api_key) return false;
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3_000);
-    const res = await fetch(`${config.ollama_url}/api/tags`, { signal: controller.signal });
+    const timeout = setTimeout(() => controller.abort(), 5_000);
+    const res = await fetch("https://api.openai.com/v1/models", {
+      headers: { "Authorization": `Bearer ${config.openai_api_key}` },
+      signal: controller.signal,
+    });
     clearTimeout(timeout);
     return res.ok;
   } catch {
     return false;
   }
-}
-
-/** Check if the configured AI provider is reachable */
-export async function isAIAvailable(): Promise<boolean> {
-  const config = await loadConfig();
-
-  if (config.ai_provider === "openai" && config.openai_api_key) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5_000);
-      const res = await fetch("https://api.openai.com/v1/models", {
-        headers: { "Authorization": `Bearer ${config.openai_api_key}` },
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-      return res.ok;
-    } catch {
-      return false;
-    }
-  }
-
-  return isOllamaRunning();
 }

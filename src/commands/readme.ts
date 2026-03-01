@@ -11,7 +11,7 @@ export async function runReadme(dir: string = process.cwd()): Promise<void> {
   const aiOk = await isAIAvailable();
   if (!aiOk) {
     gp.warn("No AI provider available. A basic template README will be generated.");
-    gp.info("Configure OpenAI (openai_api_key) or start Ollama for AI-powered READMEs.");
+    gp.info("Configure OpenAI (openai_api_key in ~/.gitpal/config.json) for AI-powered READMEs.");
   } else {
     gp.info("Reading your project files...");
   }

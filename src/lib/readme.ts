@@ -216,7 +216,7 @@ export async function generateReadme(dir: string): Promise<string | null> {
   }
 }
 
-/** Minimal fallback if Ollama is unavailable */
+/** Minimal fallback if AI is unavailable */
 function buildFallbackReadme(ctx: ProjectContext): string {
   const stack = ctx.stack.length > 0 ? ctx.stack.join(", ") : "Unknown";
   const hasPkg = "package.json" in ctx.priorityFiles;

@@ -1,13 +1,13 @@
 /**
  * `gp doctor` — full system health check.
- * Checks: disk, memory, Ollama, Docker containers, uncommitted work, watcher status.
+ * Checks: disk, memory, Docker containers, uncommitted work, watcher status.
  */
 
 import { existsSync, readdirSync, statSync, readFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { loadConfig } from "../lib/config.ts";
-import { isOllamaRunning, isAIAvailable } from "../lib/ai.ts";
+import { isAIAvailable } from "../lib/ai.ts";
 import { gitStatus, isGitRepo, hasRemote } from "../lib/git.ts";
 import { gp, banner } from "../lib/display.ts";
 import chalk from "chalk";
@@ -70,12 +70,12 @@ async function checkMemory(): Promise<boolean> {
   } catch { warn("Memory", "could not check"); return true; }
 }
 
-async function checkOllama(): Promise<boolean> {
+async function checkAI(): Promise<boolean> {
   const config = await loadConfig();
-  const provider = config.ai_provider === "openai" && config.openai_api_key ? "OpenAI" : "Ollama";
+  if (!config.openai_api_key) { warn("OpenAI", "no API key configured — AI commit messages disabled"); return false; }
   const available = await isAIAvailable();
-  if (available) { pass(provider, `connected — AI commit messages active (${config.ai_provider === "openai" ? config.openai_model : config.ollama_model})`); return true; }
-  warn(provider, provider === "OpenAI" ? "unreachable — check openai_api_key in ~/.gitpal/config.json" : "not running — AI features disabled. Run: ollama serve");
+  if (available) { pass("OpenAI", `connected — AI commit messages active (${config.openai_model})`); return true; }
+  warn("OpenAI", "unreachable — check openai_api_key in ~/.gitpal/config.json");
   return false;
 }
 
@@ -219,7 +219,7 @@ export async function runDoctor(opts: DoctorOptions = {}): Promise<void> {
   await checkMemory();
 
   section("Services");
-  await checkOllama();
+  await checkAI();
   await checkDocker();
 
   section("GitPal");
