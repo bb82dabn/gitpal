@@ -428,6 +428,7 @@ async function main(): Promise<void> {
   await Bun.write(SERVER_PID, String(process.pid));
 
   Bun.serve({
+    hostname: "0.0.0.0",
     port: PORT,
     fetch: handleRequest,
   });

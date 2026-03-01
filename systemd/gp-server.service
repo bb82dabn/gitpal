@@ -1,0 +1,15 @@
+[Unit]
+Description=GitPal web dashboard (port 4242)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/gp-server
+Restart=on-failure
+RestartSec=10
+Environment=HOME=%h
+StandardOutput=null
+StandardError=journal
+
+[Install]
+WantedBy=default.target

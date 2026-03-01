@@ -70,10 +70,10 @@ function detectBuildCmd(projectDir: string): string[] | null {
   return null;
 }
 
-/** Run build/check command. Returns true if it exits 0. */
-async function runBuildCheck(projectDir: string): Promise<boolean> {
+/** Run build/check command. Returns true if pass, false if fail, null if no build system. */
+async function runBuildCheck(projectDir: string): Promise<boolean | null> {
   const cmd = detectBuildCmd(projectDir);
-  if (!cmd) return false; // no build command detected
+  if (!cmd) return null; // no build command — not applicable
   try {
     const [prog, ...args] = cmd;
     const result = await Bun.spawn([prog!, ...args], {
@@ -346,8 +346,8 @@ async function main() {
           committing = false;
         }
         return;
-      } else if (hasChanges) {
-        // Build is failing. Start broken-state timer.
+      } else if (passed === false && hasChanges) {
+        // Build genuinely failed (not just missing). Start broken-state timer.
         if (firstBrokenAt === 0) firstBrokenAt = now;
       }
     }
