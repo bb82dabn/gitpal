@@ -161,15 +161,19 @@ async function initProject(dir: string): Promise<void> {
 // Track dirs we've already processed to avoid double-triggering
 const processed = new Set<string>();
 
-// Pre-populate with existing dirs so we only react to truly NEW ones
-function seedExisting(projectsDir: string): void {
+// Pre-populate with existing dirs so we only react to truly NEW ones.
+// Also queue any non-git directories for auto-init.
+function seedExisting(projectsDir: string, uninitQueue: string[]): void {
   try {
     const entries = readdirSync(projectsDir);
     for (const entry of entries) {
+      if (entry.startsWith(".")) continue;
       const full = join(projectsDir, entry);
       try {
-        if (statSync(full).isDirectory()) {
-          processed.add(full);
+        if (!statSync(full).isDirectory()) continue;
+        processed.add(full);
+        if (!isGitRepo(full)) {
+          uninitQueue.push(full);
         }
       } catch { /* skip */ }
     }
@@ -195,9 +199,22 @@ async function main(): Promise<void> {
 
   log(`Projects watcher started. Monitoring: ${watchRoots.join(", ")}`);
 
-  // Seed existing dirs so we don't re-init them on startup
+  // Seed existing dirs + collect uninitialized projects
+  const uninitQueue: string[] = [];
   for (const root of watchRoots) {
-    seedExisting(root);
+    seedExisting(root, uninitQueue);
+  }
+
+  // Auto-init any existing non-git directories
+  if (uninitQueue.length > 0) {
+    log(`Found ${uninitQueue.length} uninitialized project(s) — auto-initializing`);
+    for (const dir of uninitQueue) {
+      try {
+        await initProject(dir);
+      } catch (err) {
+        log(`Error initializing ${dir}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
   }
 
   // Watch each root for new subdirectories

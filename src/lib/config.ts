@@ -23,7 +23,7 @@ const CONFIG_PATH = join(CONFIG_DIR, "config.json");
 const PROMPTED_PATH = join(CONFIG_DIR, "prompted.json");
 
 const DEFAULTS: Omit<GitPalConfig, "machine_id" | "machine_name"> & { machine_id: string; machine_name: string } = {
-  watch_patterns: [],
+  watch_patterns: ["~/projects/*"],
   exclude_patterns: ["node_modules", ".git", "dist", "build", ".cache"],
   idle_seconds: 120,
   openai_api_key: "",
