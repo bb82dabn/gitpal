@@ -4,7 +4,7 @@ Automated Git workflow CLI and background watcher with AI-powered commit message
 
 ## Description
 
-GitPal streamlines Git operations by providing a comprehensive CLI with 22 commands, background file watchers for automatic commits, and a web dashboard on port 4242. It integrates AI (OpenAI or Ollama) to generate commit messages, README files, and daily digests ("The GitPal Gazette"), solving the problem of tedious manual Git management and improving developer productivity.
+GitPal streamlines Git operations by providing a comprehensive CLI with 22 commands, background file watchers for automatic commits, and a web dashboard on port 4242. It integrates OpenAI to generate commit messages, README files, and daily digests ("The GitPal Gazette"), solving the problem of tedious manual Git management and improving developer productivity.
 
 ## Features
 
@@ -35,7 +35,7 @@ GitPal streamlines Git operations by providing a comprehensive CLI with 22 comma
   - Provides REST API endpoints for project status, logs, and real-time updates
 
 - **AI Integration:**
-  - Supports OpenAI API or local Ollama via environment variables
+  - Uses OpenAI API for commit messages, README content, and daily digest summaries
   - Generates commit messages, README content, and daily digest summaries
   - Abstracted in `src/lib/ai.ts`
 
@@ -69,7 +69,7 @@ GitPal streamlines Git operations by providing a comprehensive CLI with 22 comma
 | Bun                      | JavaScript runtime and bundler       |
 | TypeScript               | Language                            |
 | Chokidar                 | File watching                        |
-| OpenAI API / Ollama      | AI-powered commit messages, README, digests |
+| OpenAI API               | AI-powered commit messages, README, digests |
 | GitHub CLI (`gh`)        | GitHub repository and PR management  |
 | Chalk                    | Terminal output styling               |
 | Zod                      | Configuration schema validation      |
@@ -187,13 +187,12 @@ The MCP server (`src/mcp.ts`) exposes Model Context Protocol endpoints for AI as
 
 | Variable         | Description                                           | Required |
 |------------------|-------------------------------------------------------|----------|
-| `OPENAI_API_KEY` | API key for OpenAI integration (used for AI features) | No*      |
-| `OLLAMA_BASE_URL`| Base URL for local Ollama AI server (alternative AI provider) | No*      |
+| `OPENAI_API_KEY` | API key for OpenAI (used for AI features) | Yes      |
 
-\* At least one AI provider environment variable (`OPENAI_API_KEY` or `OLLAMA_BASE_URL`) should be set to enable AI-powered features like commit message generation, README creation, and digest summaries.
+Set `openai_api_key` in `~/.gitpal/config.json` or export `OPENAI_API_KEY` to enable AI-powered features like commit message generation, README creation, and digest summaries.
 
 ---
 
 # Summary
 
-GitPal is a comprehensive Git workflow automation tool combining CLI commands, background watchers, AI integration, and a web dashboard to simplify Git operations, project management, and documentation for developers. It requires Bun runtime, Git, GitHub CLI, and optionally Docker and AI API keys. Installation includes building binaries, setting up shell hooks, and systemd services for seamless background operation.
+GitPal is a comprehensive Git workflow automation tool combining CLI commands, background watchers, AI integration, and a web dashboard to simplify Git operations, project management, and documentation for developers. It requires Bun runtime, Git, GitHub CLI, and optionally Docker. Installation includes building binaries, setting up shell hooks, and systemd services for seamless background operation.
