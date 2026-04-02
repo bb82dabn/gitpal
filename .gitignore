@@ -35,3 +35,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # GitPal
 .gp/
+
+# Built binaries (too large for GitHub)
+gp
+gp-watcher
+gp-projects-watcher
+gp-server
