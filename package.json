@@ -9,7 +9,8 @@
     "install-bin": "bun run build && cp dist/gp ~/.local/bin/gp && chmod +x ~/.local/bin/gp && cp dist/gp-watcher ~/.local/bin/gp-watcher && chmod +x ~/.local/bin/gp-watcher && cp dist/gp-projects-watcher ~/.local/bin/gp-projects-watcher && chmod +x ~/.local/bin/gp-projects-watcher && cp dist/gp-server ~/.local/bin/gp-server && chmod +x ~/.local/bin/gp-server && mkdir -p ~/.local/share/gitpal && cp src/public/index.html ~/.local/share/gitpal/index.html && mkdir -p ~/.config/systemd/user && cp systemd/*.service ~/.config/systemd/user/ && systemctl --user daemon-reload && bash install-shell.sh && echo 'Done! Run: source ~/.bashrc'"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "bun": "^1.3.13"
   },
   "peerDependencies": {
     "typescript": "^5"
