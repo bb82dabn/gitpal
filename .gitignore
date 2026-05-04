@@ -35,7 +35,6 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # GitPal
 .gp/
-.opencode/
 
 # Built binaries (too large for GitHub)
 gp

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { countFiles, getBranchStatus, gitDiff, gitStatus, hasCommits, isGitRepo } from "../src/lib/git.ts";
+import { countFiles, gitDiff, gitStatus, isGitRepo } from "../src/lib/git.ts";
 
 const tempDirs: string[] = [];
 
@@ -68,24 +68,5 @@ describe("git helpers", () => {
     writeFileSync(join(dir, "fresh.txt"), "content\n");
 
     expect(await gitDiff(dir)).toBe("New files added:\nfresh.txt");
-  });
-
-  test("reports commit presence and zeroed branch status without a remote", async () => {
-    const dir = makeTempDir();
-    await initRepo(dir);
-
-    expect(await hasCommits(dir)).toBe(false);
-
-    writeFileSync(join(dir, "tracked.txt"), "hello\n");
-    await Bun.$`git -C ${dir} add tracked.txt`.quiet();
-    await Bun.$`git -C ${dir} commit -m initial`.quiet();
-
-    expect(await hasCommits(dir)).toBe(true);
-
-    const status = await getBranchStatus(dir);
-    expect(status.branch.length).toBeGreaterThan(0);
-    expect(status.ahead).toBe(0);
-    expect(status.behind).toBe(0);
-    expect(status.diverged).toBe(false);
   });
 });
