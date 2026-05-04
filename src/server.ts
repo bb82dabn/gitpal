@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
-import { homedir } from "node:os";
+import { homedir, hostname } from "node:os";
 import { join } from "node:path";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { gitDiff, gitLog, gitStatus, hasRemote, isGitRepo } from "./lib/git.ts";
+import { gitDiff, gitLog, gitStatus, hasRemote, isGitRepo, getBranchStatus } from "./lib/git.ts";
 import { loadConfig, type GitPalConfig } from "./lib/config.ts";
 import { loadManifest, saveManifest, addToManifest, removeFromManifest, listGitHubRepos, type SyncManifest } from "./lib/sync-manifest.ts";
 import { startWatcher, isWatcherRunning as isWatcherRunningLib } from "./lib/watcher.ts";
@@ -17,6 +17,7 @@ interface DoctorItem {
 
 interface ProjectSummary {
   name: string;
+  path: string;
   lastCommit: {
     hash: string;
     message: string;
@@ -27,6 +28,10 @@ interface ProjectSummary {
   watcherRunning: boolean;
   hasRemote: boolean;
   remoteUrl: string;
+  branch: string;
+  ahead: number;
+  behind: number;
+  diverged: boolean;
 }
 
 interface ActionRequest {
@@ -148,9 +153,11 @@ async function listProjects(): Promise<ProjectSummary[]> {
       const remoteUrl = remoteExists ? await getRemoteUrl(fullPath) : "";
       const watcherRunning = await isWatcherRunning(fullPath);
       const changedFiles = status.staged + status.unstaged + status.untracked;
+      const branchStatus = await getBranchStatus(fullPath);
 
       projects.push({
         name: entry,
+        path: fullPath,
         lastCommit: lastCommit
           ? { hash: lastCommit.shortHash, message: lastCommit.message, relativeDate: lastCommit.relativeDate }
           : { hash: "", message: "No commits yet", relativeDate: "" },
@@ -159,6 +166,10 @@ async function listProjects(): Promise<ProjectSummary[]> {
         watcherRunning,
         hasRemote: remoteExists,
         remoteUrl,
+        branch: branchStatus.branch,
+        ahead: branchStatus.ahead,
+        behind: branchStatus.behind,
+        diverged: branchStatus.diverged,
       });
     }
   }
@@ -271,6 +282,31 @@ async function handleRequest(req: Request): Promise<Response> {
   if (pathname === "/api/projects" && req.method === "GET") {
     const projects = await listProjects();
     return jsonResponse(projects);
+  }
+
+  if (pathname === "/api/mesh" && req.method === "GET") {
+    const config = await loadConfig();
+    const [projects, manifest, doctor] = await Promise.all([
+      listProjects(),
+      loadManifest(),
+      getDoctorItems().catch(() => []),
+    ]);
+    return jsonResponse({
+      machine: {
+        id: config.machine_id,
+        name: config.machine_name,
+        hostname: hostname(),
+      },
+      watchRoots: getWatchRoots(config),
+      settings: {
+        autoPush: config.auto_push,
+        syncIntervalSeconds: config.sync_interval_seconds,
+      },
+      manifest,
+      projects,
+      doctor,
+      time: new Date().toISOString(),
+    });
   }
 
   if (pathname === "/api/commits" && req.method === "GET") {
