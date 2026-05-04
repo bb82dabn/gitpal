@@ -76,6 +76,15 @@ async function initProject(dir: string): Promise<void> {
     return;
   }
 
+  if (isGitRepo(dir)) {
+    log(`${name}: existing git repo detected — skipping init/readme, starting watcher only`);
+    if (!isWatcherRunning(dir)) {
+      await startWatcher(dir);
+      log(`${name}: file watcher started`);
+    }
+    return;
+  }
+
   const config = await loadConfig();
 
   // ── 1. git init ───────────────────────────────────────────────────────────
