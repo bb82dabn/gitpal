@@ -2,14 +2,11 @@
 /**
  * GitPal Projects Directory Watcher Daemon
  *
- * Watches ~/projects for new subdirectories. When a new folder appears
- * with at least 1 file, automatically:
- *   1. git init
- *   2. git add -A && git commit -m "Initial commit"
- *   3. gh repo create (private) + push
- *   4. Start the per-project file watcher daemon
+ * Watches ~/projects for new subdirectories. Existing Git repositories get
+ * a per-project watcher. Uninitialized directories are left untouched so
+ * files can be reviewed before an explicit `gp init` publishes anything.
  *
- * Usage: spawned by `gp watch projects` — do not run directly.
+ * Usage: spawned by `gp watch projects`, do not run directly.
  */
 
 import chokidar from "chokidar";
@@ -18,7 +15,6 @@ import { join, basename } from "node:path";
 import { homedir } from "node:os";
 import { loadConfig } from "./lib/config.ts";
 import { startWatcher, isWatcherRunning } from "./lib/watcher.ts";
-import { writeReadme, generateRepoMeta, applyRepoMeta } from "./lib/readme.ts";
 
 const HOME = homedir();
 const LOG_FILE = join(HOME, ".gitpal", "log", "projects-watcher.log");
@@ -69,110 +65,28 @@ async function initProject(dir: string): Promise<void> {
   const name = basename(dir);
   log(`New project detected: ${name}`);
 
-  // Wait for at least 1 file to appear (up to 10s)
   const hasFiles = await waitForFile(dir);
   if (!hasFiles) {
-    log(`${name}: no files appeared after 10s — skipping`);
+    log(`${name}: no files appeared after 10s, skipping`);
     return;
   }
 
-  if (isGitRepo(dir)) {
-    log(`${name}: existing git repo detected — skipping init/readme, starting watcher only`);
-    if (!isWatcherRunning(dir)) {
-      await startWatcher(dir);
-      log(`${name}: file watcher started`);
-    }
-    return;
-  }
-
-  const config = await loadConfig();
-
-  // ── 1. git init ───────────────────────────────────────────────────────────
   if (!isGitRepo(dir)) {
-    log(`${name}: git init`);
-    const r = await Bun.$`git -C ${dir} init -q`.quiet().nothrow();
-    if (r.exitCode !== 0) {
-      log(`${name}: git init failed — ${r.stderr.toString().trim()}`);
-      return;
-    }
-
-    // Write a .gitignore
-    const gitignore = join(dir, ".gitignore");
-    if (!existsSync(gitignore)) {
-      writeFileSync(gitignore, ".env\n.env.local\nnode_modules/\ndist/\nbuild/\n.DS_Store\n*.log\n");
-    }
+    log(`${name}: uninitialized directory skipped; run 'gp init' from the project to review files before publishing`);
+    return;
   }
 
-  // -- 2. Generate README
-  log(`${name}: generating README`);
-  await writeReadme(dir).catch(() => {
-    log(`${name}: README generation failed (non-fatal)`);
-  });
-
-  // -- 3. Initial commit (includes README)
-  log(`${name}: initial commit`);
-  await Bun.$`git -C ${dir} add -A`.quiet().nothrow();
-  const commit = await Bun.$`git -C ${dir} commit -q -m "Initial commit"`.quiet().nothrow();
-  if (commit.exitCode !== 0 && !commit.stderr.toString().includes("nothing to commit")) {
-    log(`${name}: commit failed -- ${commit.stderr.toString().trim()}`);
-  }
-
-  // ── 3. GitHub repo creation ───────────────────────────────────────────────
-  const ghCheck = await Bun.$`gh auth status`.quiet().nothrow();
-  if (ghCheck.exitCode !== 0) {
-    log(`${name}: gh not authenticated — skipping GitHub creation. Run 'gp setup'.`);
-    // Still start the local watcher
-  } else {
-    const fullName = `${config.github_username}/${name}`;
-    log(`${name}: creating GitHub repo ${fullName}`);
-    const create = await Bun.$`gh repo create ${fullName} --private --source=${dir} --remote=origin --push`.quiet().nothrow();
-    if (create.exitCode !== 0) {
-      const errMsg = create.stderr.toString().trim();
-      if (errMsg.includes("already exists")) {
-        log(`${name}: repo already exists on GitHub — connecting remote`);
-        await Bun.$`git -C ${dir} remote add origin https://github.com/${fullName}.git`.quiet().nothrow();
-        await Bun.$`git -C ${dir} push -u origin HEAD`.quiet().nothrow();
-      } else {
-        log(`${name}: GitHub creation failed — ${errMsg}`);
-      }
-    } else {
-      log(`${name}: live at https://github.com/${fullName}`);
-    }
-  }
-
-  // ── 5. Set GitHub repo metadata (description, topics, homepage) ────────────
-  const fullNameForMeta = `${config.github_username}/${name}`;
-  try {
-    const meta = await generateRepoMeta(dir);
-    await applyRepoMeta(fullNameForMeta, meta);
-    log(`${name}: GitHub metadata set — ${meta.topics.length} topics`);
-  } catch (err) {
-    log(`${name}: metadata set failed (non-fatal) — ${err instanceof Error ? err.message : String(err)}`);
-  }
-
-  // ── 4. Start per-project watcher + register systemd service ───────────────
   if (!isWatcherRunning(dir)) {
     await startWatcher(dir);
     log(`${name}: file watcher started`);
   }
-
-  // Enable systemd user service so the watcher survives reboots
-  const enableResult = await Bun.$`systemctl --user enable --now ${'gp-watcher@' + name + '.service'}`.quiet().nothrow();
-  if (enableResult.exitCode === 0) {
-    log(`${name}: systemd service enabled (survives reboots)`);
-  } else {
-    log(`${name}: systemd enable failed (non-fatal) — ${enableResult.stderr.toString().trim()}`);
-  }
-
-  log(`${name}: fully set up`);
 }
 
 // Track dirs we've already processed to avoid double-triggering
 const processed = new Set<string>();
 
 // Pre-populate with existing dirs so we only react to truly NEW ones.
-// Also queue any non-git directories for auto-init.
-function seedExisting(projectsDir: string, uninitQueue: string[]): void {
+function seedExisting(projectsDir: string): void {
   try {
     const entries = readdirSync(projectsDir);
     for (const entry of entries) {
@@ -181,9 +95,6 @@ function seedExisting(projectsDir: string, uninitQueue: string[]): void {
       try {
         if (!statSync(full).isDirectory()) continue;
         processed.add(full);
-        if (!isGitRepo(full)) {
-          uninitQueue.push(full);
-        }
       } catch { /* skip */ }
     }
   } catch { /* ok */ }
@@ -208,22 +119,9 @@ async function main(): Promise<void> {
 
   log(`Projects watcher started. Monitoring: ${watchRoots.join(", ")}`);
 
-  // Seed existing dirs + collect uninitialized projects
-  const uninitQueue: string[] = [];
+  // Seed existing dirs so only newly created directories trigger handling
   for (const root of watchRoots) {
-    seedExisting(root, uninitQueue);
-  }
-
-  // Auto-init any existing non-git directories
-  if (uninitQueue.length > 0) {
-    log(`Found ${uninitQueue.length} uninitialized project(s) — auto-initializing`);
-    for (const dir of uninitQueue) {
-      try {
-        await initProject(dir);
-      } catch (err) {
-        log(`Error initializing ${dir}: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    }
+    seedExisting(root);
   }
 
   // Watch each root for new subdirectories

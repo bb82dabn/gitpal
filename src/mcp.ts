@@ -6,12 +6,12 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { z } from "zod/v4";
 
 function run(args: string[], cwd: string): string {
   try {
-    const result = execSync(["gp", ...args].join(" "), {
+    const result = execFileSync("gp", args, {
       cwd,
       encoding: "utf8",
       timeout: 120_000,

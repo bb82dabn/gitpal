@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { hostname, homedir } from "node:os";
 import { randomUUID } from "node:crypto";
+import { chmodSync, mkdirSync } from "node:fs";
 
 export interface GitPalConfig {
   watch_patterns: string[];
@@ -36,7 +37,17 @@ const DEFAULTS: Omit<GitPalConfig, "machine_id" | "machine_name"> & { machine_id
 };
 
 export async function ensureConfigDir(): Promise<void> {
-  await Bun.$`mkdir -p ${CONFIG_DIR} ${join(CONFIG_DIR, "sessions")} ${join(CONFIG_DIR, "log")}`.quiet();
+  mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
+  mkdirSync(join(CONFIG_DIR, "sessions"), { recursive: true, mode: 0o700 });
+  mkdirSync(join(CONFIG_DIR, "log"), { recursive: true, mode: 0o700 });
+  chmodSync(CONFIG_DIR, 0o700);
+  chmodSync(join(CONFIG_DIR, "sessions"), 0o700);
+  chmodSync(join(CONFIG_DIR, "log"), 0o700);
+}
+
+async function writePrivateJson(path: string, data: unknown): Promise<void> {
+  await Bun.write(path, JSON.stringify(data, null, 2));
+  chmodSync(path, 0o600);
 }
 
 export async function loadConfig(): Promise<GitPalConfig> {
@@ -44,6 +55,7 @@ export async function loadConfig(): Promise<GitPalConfig> {
   const file = Bun.file(CONFIG_PATH);
   let raw: Partial<GitPalConfig> = {};
   if (await file.exists()) {
+    chmodSync(CONFIG_PATH, 0o600);
     raw = await file.json() as Partial<GitPalConfig>;
   }
   const config = { ...DEFAULTS, ...raw };
@@ -59,7 +71,7 @@ export async function loadConfig(): Promise<GitPalConfig> {
     dirty = true;
   }
   if (dirty) {
-    await Bun.write(CONFIG_PATH, JSON.stringify(config, null, 2));
+    await writePrivateJson(CONFIG_PATH, config);
   }
 
   return config;
@@ -69,7 +81,7 @@ export async function saveConfig(patch: Partial<GitPalConfig>): Promise<void> {
   await ensureConfigDir();
   const current = await loadConfig();
   const updated = { ...current, ...patch };
-  await Bun.write(CONFIG_PATH, JSON.stringify(updated, null, 2));
+  await writePrivateJson(CONFIG_PATH, updated);
 }
 
 export async function isWatched(dir: string): Promise<boolean> {
@@ -104,7 +116,7 @@ export async function markPrompted(dir: string): Promise<void> {
   const list: string[] = (await file.exists()) ? (await file.json() as string[]) : [];
   if (!list.includes(dir)) {
     list.push(dir);
-    await Bun.write(PROMPTED_PATH, JSON.stringify(list, null, 2));
+    await writePrivateJson(PROMPTED_PATH, list);
   }
 }
 

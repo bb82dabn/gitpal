@@ -72,7 +72,7 @@ async function pushWithRetry(dir: string, quiet: boolean, maxAttempts = 3): Prom
 // ── Exported interface ─────────────────────────────────────────────────────
 
 export interface PushOptions {
-  /** Auto-deploy via Docker after push (default: true if docker-compose.yml exists) */
+  /** Auto-deploy via Docker after push (default: false) */
   deploy?: boolean;
   /** Skip the confirm prompt — commit and push immediately */
   yes?: boolean;
@@ -169,8 +169,8 @@ export async function runPush(dir: string = process.cwd(), opts: PushOptions = {
   if (!quiet) gp.info("Pushing to GitHub...");
   const pushResult = await pushWithRetry(dir, quiet);
 
-  // ── Auto-deploy (only if push succeeded, not queued) ──────────────────────
-  const shouldDeploy = opts.deploy !== false && hasDeployTarget(dir) && pushResult === "ok";
+  // ── Auto-deploy (only if explicitly requested and push succeeded) ─────────
+  const shouldDeploy = opts.deploy === true && hasDeployTarget(dir) && pushResult === "ok";
   if (shouldDeploy) {
     if (!quiet) gp.info("Deploying...");
     const deploy = await runDeploy(dir);

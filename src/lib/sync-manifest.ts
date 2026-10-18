@@ -7,6 +7,7 @@
 
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { chmodSync } from "node:fs";
 import { loadConfig, ensureConfigDir } from "./config.ts";
 
 const MANIFEST_PATH = join(homedir(), ".gitpal", "sync-manifest.json");
@@ -34,6 +35,7 @@ export async function loadManifest(): Promise<SyncManifest> {
   const file = Bun.file(MANIFEST_PATH);
 
   if (await file.exists()) {
+    chmodSync(MANIFEST_PATH, 0o600);
     const raw = await file.json() as Partial<SyncManifest>;
     return {
       machine_id: raw.machine_id ?? config.machine_id,
@@ -52,6 +54,7 @@ export async function loadManifest(): Promise<SyncManifest> {
 export async function saveManifest(manifest: SyncManifest): Promise<void> {
   await ensureConfigDir();
   await Bun.write(MANIFEST_PATH, JSON.stringify(manifest, null, 2));
+  chmodSync(MANIFEST_PATH, 0o600);
 }
 
 export async function addToManifest(repo: Omit<SyncedRepo, "added_at">): Promise<void> {

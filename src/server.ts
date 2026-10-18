@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
-import { homedir, hostname } from "node:os";
-import { join } from "node:path";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { homedir } from "node:os";
+import { basename, join, resolve, sep } from "node:path";
+import { existsSync, realpathSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { gitDiff, gitLog, gitStatus, hasRemote, isGitRepo, getBranchStatus } from "./lib/git.ts";
 import { loadConfig, type GitPalConfig } from "./lib/config.ts";
-import { loadManifest, saveManifest, addToManifest, removeFromManifest, listGitHubRepos, type SyncManifest } from "./lib/sync-manifest.ts";
+import { loadManifest, addToManifest, removeFromManifest, listGitHubRepos } from "./lib/sync-manifest.ts";
 import { startWatcher, isWatcherRunning as isWatcherRunningLib } from "./lib/watcher.ts";
 
 type DoctorStatus = "pass" | "warn" | "fail";
@@ -17,7 +17,6 @@ interface DoctorItem {
 
 interface ProjectSummary {
   name: string;
-  path: string;
   lastCommit: {
     hash: string;
     message: string;
@@ -43,6 +42,9 @@ const HOME = homedir();
 const SESSIONS_DIR = join(HOME, ".gitpal", "sessions");
 const SERVER_PID = join(SESSIONS_DIR, "gp-server.pid");
 const PORT = 4242;
+const HOSTNAME = "127.0.0.1";
+const EDITIONS = ["morning", "noon", "evening", "midnight"] as const;
+const REPO_NAME_PATTERN = /^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/;
 
 function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data, null, 2), {
@@ -56,6 +58,30 @@ function textResponse(data: string, status = 200): Response {
     status,
     headers: { "Content-Type": "text/plain; charset=utf-8" },
   });
+}
+
+function isJsonRequest(req: Request): boolean {
+  const contentType = req.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
+  const contentLengthHeader = req.headers.get("content-length");
+  const contentLength = contentLengthHeader === null ? 0 : Number(contentLengthHeader);
+  return contentType === "application/json"
+    && Number.isFinite(contentLength)
+    && contentLength >= 0
+    && contentLength <= 16_384;
+}
+
+function isTrustedMutationRequest(req: Request): boolean {
+  if (!isJsonRequest(req)) return false;
+  const origin = req.headers.get("origin");
+  if (!origin) return true;
+  try {
+    const originUrl = new URL(origin);
+    return originUrl.protocol === "http:"
+      && (originUrl.hostname === "127.0.0.1" || originUrl.hostname === "localhost")
+      && originUrl.port === String(PORT);
+  } catch {
+    return false;
+  }
 }
 
 function expandHome(path: string): string {
@@ -120,7 +146,17 @@ async function isWatcherRunning(projectDir: string): Promise<boolean> {
 async function getRemoteUrl(dir: string): Promise<string> {
   const result = await Bun.$`git -C ${dir} remote get-url origin`.quiet().nothrow();
   if (result.exitCode !== 0) return "";
-  return result.stdout.toString().trim();
+  const remote = result.stdout.toString().trim();
+  try {
+    const url = new URL(remote);
+    url.username = "";
+    url.password = "";
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return remote.startsWith("git@github.com:") ? remote : "";
+  }
 }
 
 async function listProjects(): Promise<ProjectSummary[]> {
@@ -157,7 +193,6 @@ async function listProjects(): Promise<ProjectSummary[]> {
 
       projects.push({
         name: entry,
-        path: fullPath,
         lastCommit: lastCommit
           ? { hash: lastCommit.shortHash, message: lastCommit.message, relativeDate: lastCommit.relativeDate }
           : { hash: "", message: "No commits yet", relativeDate: "" },
@@ -178,12 +213,18 @@ async function listProjects(): Promise<ProjectSummary[]> {
 }
 
 async function resolveProjectDir(project: string): Promise<string | null> {
+  if (!project || project !== basename(project) || project === "." || project === ".." || project.includes("\0")) {
+    return null;
+  }
+
   const config = await loadConfig();
   const roots = getWatchRoots(config);
   for (const root of roots) {
-    const candidate = join(root, project);
     try {
-      if (statSync(candidate).isDirectory()) return candidate;
+      const realRoot = realpathSync(root);
+      const candidate = realpathSync(resolve(realRoot, project));
+      if (!candidate.startsWith(realRoot + sep) || !statSync(candidate).isDirectory()) continue;
+      if (await isGitRepo(candidate)) return candidate;
     } catch {
       continue;
     }
@@ -293,16 +334,16 @@ async function handleRequest(req: Request): Promise<Response> {
     ]);
     return jsonResponse({
       machine: {
-        id: config.machine_id,
         name: config.machine_name,
-        hostname: hostname(),
       },
-      watchRoots: getWatchRoots(config),
       settings: {
         autoPush: config.auto_push,
         syncIntervalSeconds: config.sync_interval_seconds,
       },
-      manifest,
+      manifest: {
+        machine_name: manifest.machine_name,
+        synced_repos: manifest.synced_repos.map((repo) => ({ name: repo.name })),
+      },
       projects,
       doctor,
       time: new Date().toISOString(),
@@ -336,6 +377,7 @@ async function handleRequest(req: Request): Promise<Response> {
   }
 
   if (pathname === "/api/action" && req.method === "POST") {
+    if (!isTrustedMutationRequest(req)) return jsonResponse({ ok: false, error: "Untrusted request" }, 403);
     let payload: ActionRequest;
     try {
       payload = await req.json() as ActionRequest;
@@ -376,6 +418,9 @@ async function handleRequest(req: Request): Promise<Response> {
     const edition = url.searchParams.get("edition") ?? "morning";
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return new Response("Missing or invalid date", { status: 400 });
+    }
+    if (!EDITIONS.includes(edition as typeof EDITIONS[number])) {
+      return new Response("Invalid edition", { status: 400 });
     }
     const pdfPath = join(HOME, ".gitpal", "log", "gazette", date, `${edition}.pdf`);
     if (!existsSync(pdfPath)) return new Response("PDF not found", { status: 404 });
@@ -473,10 +518,14 @@ async function handleRequest(req: Request): Promise<Response> {
 
   if (pathname === "/api/sync-manifest" && req.method === "GET") {
     const manifest = await loadManifest();
-    return jsonResponse(manifest);
+    return jsonResponse({
+      machine_name: manifest.machine_name,
+      synced_repos: manifest.synced_repos.map((repo) => ({ name: repo.name })),
+    });
   }
 
   if (pathname === "/api/sync-manifest" && req.method === "POST") {
+    if (!isTrustedMutationRequest(req)) return jsonResponse({ ok: false, error: "Untrusted request" }, 403);
     let body: { action: string; repoName?: string; repoUrl?: string; localPath?: string };
     try {
       body = await req.json() as typeof body;
@@ -484,12 +533,7 @@ async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse({ ok: false, error: "Invalid JSON" }, 400);
     }
 
-    if (body.action === "add" && body.repoName && body.repoUrl && body.localPath) {
-      await addToManifest({ name: body.repoName, url: body.repoUrl, local_path: body.localPath });
-      return jsonResponse({ ok: true });
-    }
-
-    if (body.action === "remove" && body.repoName) {
+    if (body.action === "remove" && typeof body.repoName === "string" && REPO_NAME_PATTERN.test(body.repoName)) {
       await removeFromManifest(body.repoName);
       return jsonResponse({ ok: true });
     }
@@ -498,6 +542,7 @@ async function handleRequest(req: Request): Promise<Response> {
   }
 
   if (pathname === "/api/clone" && req.method === "POST") {
+    if (!isTrustedMutationRequest(req)) return jsonResponse({ ok: false, error: "Untrusted request" }, 403);
     let body: { repo: string };
     try {
       body = await req.json() as typeof body;
@@ -505,16 +550,21 @@ async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse({ ok: false, error: "Invalid JSON" }, 400);
     }
 
-    if (!body.repo) return jsonResponse({ ok: false, error: "Missing repo" }, 400);
+    if (typeof body.repo !== "string" || !REPO_NAME_PATTERN.test(body.repo)) {
+      return jsonResponse({ ok: false, error: "Repo must be an owner/name GitHub identifier" }, 400);
+    }
 
     const config = await loadConfig();
     const roots = getWatchRoots(config);
     const projectsRoot = roots[0] ?? join(HOME, "projects");
     const repoName = body.repo.split("/").pop() ?? body.repo;
-    const destDir = join(projectsRoot, repoName);
+    const destDir = resolve(projectsRoot, repoName);
+    if (!destDir.startsWith(resolve(projectsRoot) + sep)) {
+      return jsonResponse({ ok: false, error: "Invalid destination" }, 400);
+    }
 
     if (existsSync(destDir)) {
-      return jsonResponse({ ok: true, message: "Already exists", path: destDir });
+      return jsonResponse({ ok: true, message: "Already exists" });
     }
 
     const cloneResult = await Bun.$`gh repo clone ${body.repo} ${destDir}`.quiet().nothrow();
@@ -534,7 +584,7 @@ async function handleRequest(req: Request): Promise<Response> {
       local_path: destDir,
     });
 
-    return jsonResponse({ ok: true, path: destDir });
+    return jsonResponse({ ok: true });
   }
 
   return new Response("Not found", { status: 404 });
@@ -545,7 +595,7 @@ async function main(): Promise<void> {
   await Bun.write(SERVER_PID, String(process.pid));
 
   Bun.serve({
-    hostname: "0.0.0.0",
+    hostname: HOSTNAME,
     port: PORT,
     fetch: handleRequest,
   });
@@ -560,7 +610,7 @@ async function main(): Promise<void> {
     process.exit(0);
   });
 
-  console.log(`GitPal server running on http://localhost:${PORT}`);
+  console.log(`GitPal server running on http://${HOSTNAME}:${PORT}`);
 }
 
 main().catch((err) => {
